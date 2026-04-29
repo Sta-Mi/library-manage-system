@@ -1,1 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>墨客 · 登录</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(145deg, #f0f6fc 0%, #dae8f2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      color: #1a3a4f;
+    }
+    .auth-card {
+      max-width: 520px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 40px;
+      box-shadow: 0 25px 45px -12px rgba(18, 52, 77, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      padding: 2.5rem 2.25rem;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 2rem;
+    }
+    .brand-icon {
+      background: #1e4459;
+      color: white;
+      width: 50px;
+      height: 50px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.7rem;
+      box-shadow: 0 10px 16px -6px rgba(30,68,89,0.25);
+    }
+    .brand-text {
+      font-weight: 700;
+      font-size: 1.9rem;
+      letter-spacing: -0.02em;
+      color: #143e53;
+    }
+    .brand-text span {
+      font-weight: 400;
+      font-size: 0.95rem;
+      color: #4f7a95;
+      margin-left: 6px;
+    }
+    .role-tabs {
+      display: flex;
+      background: rgba(220, 235, 248, 0.5);
+      padding: 6px;
+      border-radius: 48px;
+      margin-bottom: 2.2rem;
+      border: 1px solid rgba(120, 160, 190, 0.15);
+    }
+    .role-tab {
+      flex: 1;
+      text-align: center;
+      padding: 12px 10px;
+      border-radius: 40px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #2d556b;
+      transition: all 0.2s;
+      background: transparent;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .role-tab.active {
+      background: white;
+      color: #1a4459;
+      box-shadow: 0 6px 14px rgba(20, 62, 85, 0.08);
+    }
+    .input-group { margin-bottom: 1.6rem; }
+    .input-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      margin-bottom: 8px;
+      color: #1e4459;
+    }
+    .input-field {
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 1rem;
+      border: 1.8px solid #d5e2ec;
+      border-radius: 30px;
+      background: #fbfdff;
+      outline: none;
+      font-family: 'Inter', sans-serif;
+    }
+    .input-field:focus {
+      border-color: #2f7899;
+      box-shadow: 0 0 0 4px rgba(47, 120, 153, 0.12);
+    }
+    .captcha-row {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .captcha-input { flex: 2; }
+    .captcha-display {
+      flex: 1;
+      background: #e5eef6;
+      border-radius: 30px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.6rem;
+      letter-spacing: 6px;
+      color: #1e4b66;
+      border: 1.8px solid #d5e2ec;
+      user-select: none;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+    .captcha-display:hover { background: #d3e2f0; }
+    .form-extra {
+      display: flex;
+      justify-content: flex-end;
+      margin: 8px 0 22px;
+    }
+    .forgot-link {
+      color: #2d6e8f;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.9rem;
+      border-bottom: 1.5px dashed #aac3d4;
+    }
+    .btn-login {
+      width: 100%;
+      padding: 16px 20px;
+      background: #1e4459;
+      color: white;
+      font-weight: 700;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 48px;
+      cursor: pointer;
+      box-shadow: 0 12px 20px -8px rgba(30, 68, 89, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .register-hint {
+      margin-top: 28px;
+      text-align: center;
+      color: #3f6d89;
+    }
+    .register-link {
+      background: none;
+      border: none;
+      color: #1e5b7c;
+      font-weight: 700;
+      cursor: pointer;
+      margin-left: 8px;
+      border-bottom: 1.5px solid #b1cfe5;
+    }
+    .message-area {
+      min-height: 28px;
+      margin-top: 18px;
+      color: #c74545;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<div class="auth-card">
+  <!-- 登录视图 -->
+  <div id="loginView">
+    <div class="brand">
+      <div class="brand-icon"><i class="fas fa-book-open"></i></div>
+      <div class="brand-text">墨客<span>· 书阁</span></div>
+    </div>
+    <div class="role-tabs">
+      <div class="role-tab active" id="readerTab"><i class="fas fa-user-graduate"></i> 读者</div>
+      <div class="role-tab" id="adminTab"><i class="fas fa-user-shield"></i> 管理员</div>
+    </div>
+    <form id="loginForm">
+      <div class="input-group">
+        <div class="input-label"><i class="far fa-user"></i> 用户名</div>
+        <input type="text" id="loginUsername" class="input-field" placeholder="用户名" required>
+      </div>
+      <div class="input-group">
+        <div class="input-label"><i class="fas fa-lock"></i> 密码</div>
+        <input type="password" id="loginPassword" class="input-field" placeholder="••••••••" required>
+      </div>
+      <div class="input-group">
+        <div class="input-label"><i class="fas fa-shield-alt"></i> 验证码</div>
+        <div class="captcha-row">
+          <input type="text" id="captchaInput" class="input-field captcha-input" placeholder="验证码" maxlength="4" required>
+          <div class="captcha-display" id="captchaCode">A3B8</div>
+        </div>
+      </div>
+      <div class="form-extra">
+        <a href="#" class="forgot-link" id="forgotLink"><i class="far fa-question-circle"></i> 忘记密码？</a>
+      </div>
+      <button type="submit" class="btn-login"><i class="fas fa-arrow-right-to-bracket"></i> 登录</button>
+      <div id="loginMessage" class="message-area"></div>
+    </form>
+    <div class="register-hint">
+      还没有账号？<button class="register-link" id="showRegisterBtn">立即注册</button>
+    </div>
+  </div>
 
+  <!-- 注册视图 -->
+  <div id="registerView" class="hidden">
+    <div class="brand" style="margin-bottom: 1.2rem;">
+      <div class="brand-icon"><i class="fas fa-user-plus"></i></div>
+      <div class="brand-text">注册<span>· 新读者</span></div>
+    </div>
+    <p style="margin-bottom: 1.8rem; color: #2d5e78;">创建账号，默认成为读者</p>
+    <form id="registerForm">
+      <div class="input-group">
+        <div class="input-label">用户名</div>
+        <input type="text" id="regUsername" class="input-field" placeholder="设置用户名" required>
+      </div>
+      <div class="input-group">
+        <div class="input-label">密码</div>
+        <input type="password" id="regPassword" class="input-field" placeholder="至少6位" required>
+      </div>
+      <div class="input-group">
+        <div class="input-label">确认密码</div>
+        <input type="password" id="regConfirm" class="input-field" placeholder="再次输入密码" required>
+      </div>
+      <button type="submit" class="btn-login" style="margin-top: 12px;">注册</button>
+      <div id="regMessage" class="message-area"></div>
+    </form>
+    <div class="register-hint" style="margin-top: 22px;">
+      <button class="register-link" id="backToLoginBtn"><i class="fas fa-arrow-left"></i> 返回登录</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function(){
+    const STORAGE_USERS = 'lib_users_v2';
+    // 初始化默认账号
+    if (!localStorage.getItem(STORAGE_USERS)) {
+      localStorage.setItem(STORAGE_USERS, JSON.stringify([
+        { username: 'reader', password: '123456', role: 'reader' },
+        { username: 'admin', password: 'admin123', role: 'admin' }
+      ]));
+    }
+
+    const loginView = document.getElementById('loginView');
+    const registerView = document.getElementById('registerView');
+    const readerTab = document.getElementById('readerTab');
+    const adminTab = document.getElementById('adminTab');
+    const loginForm = document.getElementById('loginForm');
+    const loginMessage = document.getElementById('loginMessage');
+    const showRegisterBtn = document.getElementById('showRegisterBtn');
+    const backToLoginBtn = document.getElementById('backToLoginBtn');
+    const registerForm = document.getElementById('registerForm');
+    const regMessage = document.getElementById('regMessage');
+    const captchaCode = document.getElementById('captchaCode');
+    const captchaInput = document.getElementById('captchaInput');
+    const forgotLink = document.getElementById('forgotLink');
+
+    let selectedRole = 'reader';
+    let currentCaptcha = 'A3B8';
+
+    function generateCaptcha() {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+      let code = '';
+      for(let i=0; i<4; i++) code += chars[Math.floor(Math.random()*chars.length)];
+      captchaCode.textContent = code;
+      return code;
+    }
+    captchaCode.addEventListener('click', ()=> { currentCaptcha = generateCaptcha(); });
+    currentCaptcha = generateCaptcha();
+
+    readerTab.addEventListener('click', ()=> {
+      readerTab.classList.add('active');
+      adminTab.classList.remove('active');
+      selectedRole = 'reader';
+    });
+    adminTab.addEventListener('click', ()=> {
+      adminTab.classList.add('active');
+      readerTab.classList.remove('active');
+      selectedRole = 'admin';
+    });
+
+    showRegisterBtn.addEventListener('click', ()=> {
+      loginView.classList.add('hidden');
+      registerView.classList.remove('hidden');
+    });
+    backToLoginBtn.addEventListener('click', ()=> {
+      registerView.classList.add('hidden');
+      loginView.classList.remove('hidden');
+    });
+
+    loginForm.addEventListener('submit', (e)=> {
+      e.preventDefault();
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      const captcha = captchaInput.value.trim();
+      if (!username || !password) {
+        loginMessage.textContent = '请填写用户名和密码';
+        return;
+      }
+      if (captcha.toUpperCase() !== currentCaptcha.toUpperCase()) {
+        loginMessage.textContent = '验证码错误';
+        currentCaptcha = generateCaptcha();
+        return;
+      }
+      const users = JSON.parse(localStorage.getItem(STORAGE_USERS)) || [];
+      const user = users.find(u => u.username === username && u.password === password);
+      if (!user) {
+        loginMessage.textContent = '用户名或密码错误';
+        currentCaptcha = generateCaptcha();
+        return;
+      }
+      if (user.role !== selectedRole) {
+        loginMessage.textContent = `该账号不是${selectedRole==='admin'?'管理员':'读者'}`;
+        currentCaptcha = generateCaptcha();
+        return;
+      }
+      // 登录成功，保存当前用户并跳转
+      sessionStorage.setItem('currentUser', JSON.stringify(user));
+      if (user.role === 'admin') {
+        window.location.href = './admin.html';
+      } else {
+        window.location.href = './reader.html';
+      }
+    });
+
+    registerForm.addEventListener('submit', (e)=> {
+      e.preventDefault();
+      const username = document.getElementById('regUsername').value.trim();
+      const pwd = document.getElementById('regPassword').value;
+      const confirm = document.getElementById('regConfirm').value;
+      if (username.length<3) { regMessage.textContent='用户名至少3位'; return; }
+      if (pwd.length<6) { regMessage.textContent='密码至少6位'; return; }
+      if (pwd !== confirm) { regMessage.textContent='两次密码不一致'; return; }
+      const users = JSON.parse(localStorage.getItem(STORAGE_USERS)) || [];
+      if (users.find(u=>u.username===username)) { regMessage.textContent='用户名已存在'; return; }
+      users.push({ username, password: pwd, role: 'reader' });
+      localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+      alert('注册成功！请登录');
+      registerView.classList.add('hidden');
+      loginView.classList.remove('hidden');
+    });
+
+    forgotLink.addEventListener('click', (e)=> {
+      e.preventDefault();
+      alert('请联系管理员重置密码。测试账号：reader/123456 ； admin/admin123');
+    });
+  })();
+</script>
+</body>
+</html>
