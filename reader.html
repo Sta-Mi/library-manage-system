@@ -1,1 +1,240 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>读者中心 · 墨客</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f5faff;
+      min-height: 100vh;
+      display: flex;
+    }
+    .sidebar {
+      width: 260px;
+      background: white;
+      padding: 2rem 1rem;
+      box-shadow: 4px 0 12px rgba(0,0,0,0.02);
+    }
+    .logo { display: flex; align-items: center; gap: 12px; padding:0 0.8rem 2rem; }
+    .logo i { background: #1e4459; color: white; padding: 12px; border-radius: 16px; }
+    .nav-item {
+      padding: 14px 18px; margin:6px 0; border-radius: 16px;
+      display: flex; align-items: center; gap: 14px; cursor: pointer;
+    }
+    .nav-item.active { background: #1e4459; color: white; }
+    .main-content { flex:1; padding: 2rem 2.5rem; }
+    .page-header { margin-bottom: 2rem; }
+    .search-section {
+      background: white; border-radius: 48px; padding: 6px 6px 6px 24px;
+      display: flex; border: 1px solid #d5e2ec; margin-bottom: 24px;
+    }
+    .search-section input { flex:1; border: none; padding: 14px; outline: none; }
+    .data-table { width:100%; background: white; border-radius: 24px; padding: 1rem; }
+    .data-table th { text-align: left; padding: 1rem; color: #3b6079; }
+    .data-table td { padding: 1rem; border-top: 1px solid #ecf3f9; }
+    .badge {
+      padding: 4px 12px; border-radius: 30px; font-size: 0.8rem; font-weight: 600;
+    }
+    .badge.borrowed { background: #fce9e6; color: #b13e3e; }
+    .badge.returned { background: #e3f0e8; color: #1b6b4c; }
+    .badge.overdue { background: #fff3cd; color: #856404; }
+    .modal { position: fixed; top:0; left:0; width:100%; height:100%;
+      background: rgba(0,0,0,0.1); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; }
+    .modal-card { background: white; border-radius: 36px; padding:2rem; width:380px; }
+    .hidden { display: none !important; }
+    .input-field { width:100%; padding:14px; border-radius:30px; border:1px solid #d5e2ec; margin:16px 0; }
+    .btn-primary { background: #1e4459; color: white; border: none; padding: 12px 24px; border-radius: 36px; cursor: pointer; }
+  </style>
+</head>
+<body>
+<div class="sidebar">
+  <div class="logo"><i class="fas fa-book-open"></i><h2>墨客·读者</h2></div>
+  <div class="nav-item active" data-page="home"><i class="fas fa-home"></i> 图书查询</div>
+  <div class="nav-item" data-page="records"><i class="fas fa-history"></i> 我的借阅</div>
+  <div class="nav-item" data-page="profile"><i class="fas fa-user-circle"></i> 个人中心</div>
+  <button class="nav-item" id="logoutBtn" style="margin-top:40px;"><i class="fas fa-sign-out-alt"></i> 注销</button>
+</div>
 
+<div class="main-content">
+  <!-- 图书查询视图 -->
+  <div id="homeView">
+    <div class="page-header"><h1><i class="fas fa-search"></i> 图书综合查询</h1></div>
+    <div class="search-section">
+      <input type="text" placeholder="搜索书名、作者或ISBN..." id="searchInput">
+      <button class="btn-primary"><i class="fas fa-search"></i> 搜索</button>
+    </div>
+    <table class="data-table">
+      <thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>位置</th></tr></thead>
+      <tbody id="bookTableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- 我的借阅记录（仅显示本人） -->
+  <div id="recordsView" class="hidden">
+    <div class="page-header"><h1><i class="fas fa-history"></i> 我的借阅记录</h1></div>
+    <div style="background:white; border-radius:28px; padding:1.8rem;">
+      <div style="display:flex; gap:12px; margin-bottom:20px;">
+        <select id="statusFilter" style="padding:10px; border-radius:30px; border:1px solid #d5e2ec;">
+          <option value="">全部状态</option>
+          <option value="borrowed">借阅中</option>
+          <option value="returned">已归还</option>
+          <option value="overdue">逾期</option>
+        </select>
+        <input type="text" id="recordSearch" placeholder="搜索书名..." style="flex:1; padding:10px; border-radius:30px; border:1px solid #d5e2ec;">
+      </div>
+      <table class="data-table">
+        <thead><tr><th>书名</th><th>借阅日期</th><th>应还日期</th><th>实际归还</th><th>状态</th></tr></thead>
+        <tbody id="myRecordBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 个人中心 -->
+  <div id="profileView" class="hidden">
+    <h2>个人中心 · 修改密码</h2>
+    <div style="max-width:460px; margin-top:30px; background:white; border-radius:32px; padding:2rem;">
+      <form id="changePasswordForm">
+        <label>当前密码</label><input type="password" id="currentPwd" class="input-field" required>
+        <label>新密码</label><input type="password" id="newPwd" class="input-field" required>
+        <label>确认新密码</label><input type="password" id="confirmPwd" class="input-field" required>
+        <button type="submit" class="btn-primary" style="width:100%;">更新密码</button>
+        <div id="pwdMessage" style="margin-top:16px; color:#c74545;"></div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 注销确认 -->
+<div id="logoutModal" class="modal hidden">
+  <div class="modal-card" style="text-align:center;">
+    <i class="fas fa-door-open" style="font-size:2.5rem;"></i>
+    <h3>确认注销</h3>
+    <div style="display:flex; gap:12px; margin-top:24px;">
+      <button id="cancelLogout" style="flex:1; padding:12px;">取消</button>
+      <button id="confirmLogout" style="flex:1; padding:12px; background:#1e4459; color:white;">退出</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function(){
+    const STORAGE_USERS = 'lib_users_v2';
+    const STORAGE_BOOKS = 'lib_books';
+    const STORAGE_RECORDS = 'lib_records';
+    
+    const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    if (!currentUser || currentUser.role !== 'reader') window.location.href = 'login.html';
+
+    // 初始化数据（与管理员共享）
+    if (!localStorage.getItem(STORAGE_BOOKS)) {
+      localStorage.setItem(STORAGE_BOOKS, JSON.stringify([
+        { id: 'b1', title: '三体：黑暗森林', author: '刘慈欣', isbn: '9787536692930', status: 'available', location: 'A区-01' },
+        { id: 'b2', title: '人类群星闪耀时', author: '茨威格', isbn: '9787108040512', status: 'borrowed', location: 'B区-12' },
+        { id: 'b3', title: '深度学习入门', author: '斋藤康毅', isbn: '9787115584532', status: 'available', location: 'C区-05' }
+      ]));
+    }
+    
+    const books = JSON.parse(localStorage.getItem(STORAGE_BOOKS)) || [];
+    const allRecords = JSON.parse(localStorage.getItem(STORAGE_RECORDS)) || [];
+    const users = JSON.parse(localStorage.getItem(STORAGE_USERS)) || [];
+    const currentUserData = users.find(u=>u.username === currentUser.username);
+
+    // 导航切换
+    document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+      item.addEventListener('click', ()=>{
+        document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
+        item.classList.add('active');
+        ['homeView','recordsView','profileView'].forEach(v => 
+          document.getElementById(v).classList.add('hidden')
+        );
+        document.getElementById(item.dataset.page+'View').classList.remove('hidden');
+        if (item.dataset.page === 'home') renderBooks();
+        if (item.dataset.page === 'records') renderMyRecords();
+      });
+    });
+
+    // 渲染图书
+    function renderBooks(filter='') {
+      const tbody = document.getElementById('bookTableBody');
+      const filtered = books.filter(b => 
+        b.title.toLowerCase().includes(filter) || 
+        b.author.toLowerCase().includes(filter) ||
+        b.isbn.includes(filter)
+      );
+      tbody.innerHTML = filtered.map(b => `
+        <tr><td>${b.title}</td><td>${b.author}</td><td>${b.isbn}</td>
+          <td><span class="badge ${b.status==='available'?'returned':b.status==='borrowed'?'borrowed':'overdue'}">${
+            b.status==='available'?'可借':b.status==='borrowed'?'借出':'逾期'}</span></td>
+          <td>${b.location}</td>
+        </tr>
+      `).join('');
+    }
+
+    // 渲染我的借阅记录（仅当前用户）
+    function renderMyRecords() {
+      const status = document.getElementById('statusFilter').value;
+      const search = document.getElementById('recordSearch').value.toLowerCase();
+      
+      const myRecords = allRecords.filter(r => 
+        r.userId === currentUserData?.id &&
+        (!status || r.status === status) &&
+        (!search || r.bookTitle.toLowerCase().includes(search))
+      );
+      
+      const tbody = document.getElementById('myRecordBody');
+      tbody.innerHTML = myRecords.map(r => `
+        <tr><td>${r.bookTitle}</td><td>${r.borrowDate}</td><td>${r.dueDate}</td>
+          <td>${r.returnDate || '-'}</td>
+          <td><span class="badge ${r.status}">${
+            r.status==='borrowed'?'借阅中':r.status==='returned'?'已归还':'逾期'}</span></td>
+        </tr>
+      `).join('') || '<tr><td colspan="5" style="text-align:center; padding:40px;">暂无借阅记录</td></tr>';
+    }
+
+    document.getElementById('searchInput').addEventListener('input', e=>renderBooks(e.target.value));
+    document.getElementById('statusFilter')?.addEventListener('change', renderMyRecords);
+    document.getElementById('recordSearch')?.addEventListener('input', renderMyRecords);
+
+    // 修改密码
+    document.getElementById('changePasswordForm').addEventListener('submit', (e)=>{
+      e.preventDefault();
+      const current = document.getElementById('currentPwd').value;
+      const newPwd = document.getElementById('newPwd').value;
+      const confirm = document.getElementById('confirmPwd').value;
+      
+      if (currentUserData.password !== current) {
+        document.getElementById('pwdMessage').textContent = '当前密码错误'; return;
+      }
+      if (newPwd.length<6) { document.getElementById('pwdMessage').textContent = '密码至少6位'; return; }
+      if (newPwd !== confirm) { document.getElementById('pwdMessage').textContent = '两次密码不一致'; return; }
+      
+      currentUserData.password = newPwd;
+      localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
+      alert('密码修改成功！');
+      document.getElementById('changePasswordForm').reset();
+      document.getElementById('pwdMessage').textContent = '';
+    });
+
+    // 注销
+    const modal = document.getElementById('logoutModal');
+    document.getElementById('logoutBtn').addEventListener('click', ()=> modal.classList.remove('hidden'));
+    document.getElementById('cancelLogout').addEventListener('click', ()=> modal.classList.add('hidden'));
+    document.getElementById('confirmLogout').addEventListener('click', ()=>{
+      sessionStorage.removeItem('currentUser');
+      window.location.href = 'login.html';
+    });
+
+    // 初始化
+    renderBooks();
+  })();
+</script>
+</body>
+</html>
