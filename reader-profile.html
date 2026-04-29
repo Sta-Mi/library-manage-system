@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>个人中心 · 墨客</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; } body { font-family:'Inter',sans-serif; background:#f5faff; display:flex; min-height:100vh; }
+    .sidebar { width:260px; background:#fff; padding:2rem 1rem; box-shadow:4px 0 12px rgba(0,0,0,.02); }
+    .nav-item { padding:14px 18px; margin:6px 0; border-radius:16px; display:flex; gap:14px; text-decoration:none; color:inherit; }
+    .nav-item.active { background:#1e4459; color:#fff; } .main-content { flex:1; padding:2rem 2.5rem; }
+    .input-field { width:100%; padding:14px; border-radius:30px; border:1px solid #d5e2ec; margin:8px 0; } .btn-primary { background:#1e4459; color:#fff; border:none; padding:12px 24px; border-radius:36px; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div style="padding:0 .8rem 2rem; font-weight:700;">墨客·读者</div>
+    <a class="nav-item" href="reader.html">图书查询 / 我的借阅</a>
+    <a class="nav-item active" href="reader-profile.html">个人中心</a>
+    <button class="nav-item" id="logoutBtn" style="margin-top:40px; border:none; background:transparent; cursor:pointer;">注销</button>
+  </div>
+  <div class="main-content">
+    <h2>个人中心（读者）</h2>
+    <div style="max-width:760px; margin-top:30px; background:white; border-radius:32px; padding:2rem;">
+      <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;">
+        <input id="profileId" class="input-field" placeholder="读者编号" disabled><input id="profileName" class="input-field" placeholder="姓名">
+        <input id="profileGender" class="input-field" placeholder="性别" disabled><input id="profileType" class="input-field" placeholder="读者类型" disabled>
+        <input id="profileEmail" class="input-field" placeholder="邮箱"><input id="profilePhone" class="input-field" placeholder="电话">
+      </div>
+      <input id="profileAvatarUpload" type="file" accept="image/*" class="input-field">
+      <p>最近修改时间：<span id="profileUpdatedAt">-</span></p>
+      <p id="avatarWrap" style="display:none;"><img id="avatarPreview" alt="头像预览" style="width:88px; height:88px; border-radius:50%; object-fit:cover;"></p>
+      <button type="button" class="btn-primary" id="saveProfileBtn">保存资料</button>
+    </div>
+  </div>
+<script>
+(function () {
+  const STORAGE_USERS='lib_users_v2', STORAGE_READER_PROFILES='lib_reader_profiles_v1';
+  const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+  if (!currentUser || currentUser.role !== 'reader') window.location.href='login.html';
+  const users = JSON.parse(localStorage.getItem(STORAGE_USERS)) || [];
+  const currentUserData = users.find(u=>u.username===currentUser.username);
+  let profiles = JSON.parse(localStorage.getItem(STORAGE_READER_PROFILES)) || {};
+  function renderProfile() {
+    const existed = profiles[currentUserData.id] || {};
+    document.getElementById('profileId').value = currentUserData.id || '-';
+    document.getElementById('profileName').value = existed.name || currentUserData.username || '';
+    document.getElementById('profileGender').value = existed.gender || '未设置';
+    document.getElementById('profileType').value = existed.type || '普通读者';
+    document.getElementById('profileEmail').value = existed.email || '';
+    document.getElementById('profilePhone').value = existed.phone || '';
+    document.getElementById('profileUpdatedAt').textContent = existed.updatedAt || '-';
+    if (existed.avatar) { document.getElementById('avatarPreview').src = existed.avatar; document.getElementById('avatarWrap').style.display='block'; }
+    else document.getElementById('avatarWrap').style.display='none';
+  }
+  document.getElementById('profileAvatarUpload').addEventListener('change',(e)=>{ const file=e.target.files?.[0]; if(!file)return; const r=new FileReader(); r.onload=()=>{ profiles[currentUserData.id]={...(profiles[currentUserData.id]||{}),avatar:r.result}; localStorage.setItem(STORAGE_READER_PROFILES,JSON.stringify(profiles)); renderProfile();}; r.readAsDataURL(file);});
+  document.getElementById('saveProfileBtn').addEventListener('click',()=>{ profiles[currentUserData.id]={...(profiles[currentUserData.id]||{}), name:document.getElementById('profileName').value.trim(), gender:profiles[currentUserData.id]?.gender||'未设置', type:profiles[currentUserData.id]?.type||'普通读者', email:document.getElementById('profileEmail').value.trim(), phone:document.getElementById('profilePhone').value.trim(), updatedAt:new Date().toLocaleString('zh-CN',{hour12:false})}; localStorage.setItem(STORAGE_READER_PROFILES,JSON.stringify(profiles)); renderProfile(); alert('个人资料已保存');});
+  document.getElementById('logoutBtn').addEventListener('click',()=>{ sessionStorage.removeItem('currentUser'); window.location.href='login.html'; });
+  renderProfile();
+})();
+</script>
+</body>
+</html>

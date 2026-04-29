@@ -227,7 +227,8 @@
   <div class="nav-menu">
     <div class="nav-item" data-page="dashboard"><i class="fas fa-chart-pie"></i> 仪表盘</div>
     <div class="nav-item" data-page="books"><i class="fas fa-book"></i> 图书查询</div>
-    <div class="nav-item active" data-page="records"><i class="fas fa-history"></i> 借阅记录</div>
+    <div class="nav-item active" data-page="circulation"><i class="fas fa-right-left"></i> 借阅管理</div>
+    <div class="nav-item" data-page="records"><i class="fas fa-clock-rotate-left"></i> 借阅记录查询</div>
     <div class="nav-item" data-page="users"><i class="fas fa-users-gear"></i> 用户管理</div>
     <div class="nav-item" data-page="roles"><i class="fas fa-user-tag"></i> 角色权限</div>
   </div>
@@ -270,10 +271,35 @@
     </div>
   </div>
 
-  <!-- 借阅记录视图（管理员：可筛选用户） -->
-  <div id="recordsView">
+  <!-- 借阅管理视图 -->
+  <div id="circulationView">
     <div class="page-header">
-      <h1><i class="fas fa-history"></i> 借阅记录管理</h1>
+      <h1><i class="fas fa-right-left"></i> 借阅/归还办理</h1>
+    </div>
+    <div class="management-panel" style="margin-bottom:20px;">
+      <h3 style="margin-bottom:12px;">借阅办理</h3>
+      <div class="action-bar">
+        <input id="borrowUserId" class="search-box" style="padding:10px;" placeholder="读者证号/用户ID">
+        <input id="borrowBookId" class="search-box" style="padding:10px;" placeholder="图书条码/ISBN/图书ID">
+        <button class="btn-primary" id="borrowConfirmBtn">一键借阅确认</button>
+      </div>
+      <div id="borrowUserInfo" style="color:#3b6079;"></div>
+    </div>
+    <div class="management-panel">
+      <h3 style="margin-bottom:12px;">归还办理</h3>
+      <div class="action-bar">
+        <input id="returnBookId" class="search-box" style="padding:10px;" placeholder="图书条码/ISBN/图书ID">
+        <button class="btn-primary" id="returnLookupBtn">识别借阅信息</button>
+        <button class="btn-primary" id="returnConfirmBtn">确认归还</button>
+      </div>
+      <div id="returnInfo" style="color:#3b6079;"></div>
+    </div>
+  </div>
+
+  <!-- 借阅记录查询 -->
+  <div id="recordsView" class="hidden">
+    <div class="page-header">
+      <h1><i class="fas fa-history"></i> 借阅记录查询</h1>
       <button class="btn-primary" id="exportRecordsBtn"><i class="fas fa-download"></i> 导出记录</button>
     </div>
     <div class="management-panel">
@@ -298,7 +324,7 @@
       </div>
       <table class="data-table">
         <thead>
-          <tr><th>读者</th><th>书名</th><th>借阅日期</th><th>应还日期</th><th>实际归还</th><th>状态</th><th>操作</th></tr>
+          <tr><th>读者</th><th>书名</th><th>借阅日期</th><th>应还日期</th><th>实际归还</th><th>状态</th><th>罚款</th><th>操作</th></tr>
         </thead>
         <tbody id="recordTableBody"></tbody>
       </table>
@@ -424,13 +450,14 @@
         document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
         item.classList.add('active');
         const page = item.dataset.page;
-        ['dashboardView','booksView','recordsView','usersView','rolesView'].forEach(v => 
+        ['dashboardView','booksView','circulationView','recordsView','usersView','rolesView'].forEach(v => 
           document.getElementById(v).classList.add('hidden')
         );
         document.getElementById(page+'View').classList.remove('hidden');
         
         if (page==='dashboard') updateStats();
         if (page==='books') renderBookTable();
+        if (page==='circulation') renderCirculationPanel();
         if (page==='records') { loadUserFilter(); renderRecordTable(); }
         if (page==='users') renderUserTable();
       });
@@ -450,6 +477,12 @@
       document.getElementById('totalBooks').textContent = books.length;
       document.getElementById('borrowedBooks').textContent = records.filter(r=>r.status==='borrowed').length;
       document.getElementById('overdueBooks').textContent = records.filter(r=>r.status==='overdue').length;
+    }
+    function getFine(record) {
+      if (!record || !record.dueDate) return 0;
+      const end = record.returnDate || new Date().toISOString().split('T')[0];
+      const overdueDays = Math.max(0, Math.ceil((new Date(end) - new Date(record.dueDate)) / 86400000));
+      return overdueDays;
     }
 
     // 渲染图书表格
@@ -499,7 +532,9 @@
           <td>${r.returnDate || '-'}</td>
           <td><span class="badge ${r.status}">${
             r.status==='borrowed'?'借阅中':r.status==='returned'?'已归还':'逾期'}</span></td>
+          <td>¥${getFine(r)}</td>
           <td>
+            ${r.status !== 'returned' ? `<i class="fas fa-rotate action-icon" onclick="renewRecord('${r.id}')" title="续借"></i>` : ''}
             ${r.status !== 'returned' ? `<i class="fas fa-check-circle action-icon" onclick="markReturned('${r.id}')" title="标记归还"></i>` : ''}
             <i class="fas fa-info-circle action-icon" onclick="viewRecordDetail('${r.id}')"></i>
           </td>
@@ -533,6 +568,59 @@
     };
     
     window.goToRecordPage = (page) => { currentRecordPage = page; renderRecordTable(); };
+    window.renewRecord = (id) => {
+      const record = records.find(r => r.id === id);
+      if (!record || record.status === 'returned') return;
+      record.renewCount = (record.renewCount || 0) + 1;
+      record.dueDate = new Date(new Date(record.dueDate).getTime() + 7 * 86400000).toISOString().split('T')[0];
+      localStorage.setItem(STORAGE_RECORDS, JSON.stringify(records));
+      renderRecordTable();
+      alert('续借成功（+7天）');
+    };
+
+    let pendingReturnRecordId = null;
+    function renderCirculationPanel() {
+      const uid = document.getElementById('borrowUserId').value.trim();
+      const user = users.find(u => u.id === uid || u.username === uid);
+      const borrowedCount = records.filter(r => r.userId === user?.id && r.status !== 'returned').length;
+      document.getElementById('borrowUserInfo').innerHTML = user
+        ? `当前读者：${user.username}（${user.id}），借阅数量/上限：${borrowedCount}/5`
+        : '请输入读者证号查看信息';
+    }
+    document.getElementById('borrowUserId').addEventListener('input', renderCirculationPanel);
+
+    document.getElementById('borrowConfirmBtn').addEventListener('click', () => {
+      const uid = document.getElementById('borrowUserId').value.trim();
+      const bid = document.getElementById('borrowBookId').value.trim();
+      const user = users.find(u => u.id === uid || u.username === uid);
+      const book = books.find(b => b.id === bid || b.isbn === bid);
+      if (!user || user.role !== 'reader') return alert('读者不存在');
+      if (!book || book.status !== 'available') return alert('图书不可借');
+      const borrowedCount = records.filter(r => r.userId === user.id && r.status !== 'returned').length;
+      if (borrowedCount >= 5) return alert('该读者已达借阅上限');
+      const today = new Date().toISOString().split('T')[0];
+      const due = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
+      records.unshift({ id: `r${Date.now()}`, userId: user.id, userName: user.username, bookId: book.id, bookTitle: book.title, borrowDate: today, dueDate: due, returnDate: null, status: 'borrowed', renewCount: 0 });
+      book.status = 'borrowed';
+      localStorage.setItem(STORAGE_RECORDS, JSON.stringify(records));
+      localStorage.setItem(STORAGE_BOOKS, JSON.stringify(books));
+      renderCirculationPanel(); renderRecordTable(); updateStats();
+      alert('借阅办理成功');
+    });
+
+    document.getElementById('returnLookupBtn').addEventListener('click', () => {
+      const bid = document.getElementById('returnBookId').value.trim();
+      const record = records.find(r => (r.bookId === bid || books.find(b => b.id === r.bookId)?.isbn === bid) && r.status !== 'returned');
+      pendingReturnRecordId = record?.id || null;
+      if (!record) return document.getElementById('returnInfo').textContent = '未找到在借记录';
+      document.getElementById('returnInfo').innerHTML = `借阅人：${record.userName}，借阅日期：${record.borrowDate}，应还日期：${record.dueDate}，是否逾期：${new Date(record.dueDate)<new Date()?'是':'否'}，逾期罚款：¥${getFine(record)}`;
+    });
+    document.getElementById('returnConfirmBtn').addEventListener('click', () => {
+      if (!pendingReturnRecordId) return alert('请先识别借阅信息');
+      markReturned(pendingReturnRecordId);
+      document.getElementById('returnInfo').textContent = '归还完成';
+      pendingReturnRecordId = null;
+    });
 
     // 用户管理相关（简化）
     function renderUserTable() {
@@ -572,6 +660,7 @@
     // 初始化
     updateStats();
     loadUserFilter();
+    renderCirculationPanel();
     renderRecordTable();
   })();
 </script>
