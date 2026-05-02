@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理员读者管理</title>
+  <style>
+    *{box-sizing:border-box}body{font-family:'Inter',Arial,sans-serif;margin:0;padding:20px;background:linear-gradient(145deg,#f0f6fc 0%,#e0ecf5 100%);color:#1a3a4f}
+    .management-panel{background:#fff;border-radius:28px;padding:1.8rem;box-shadow:0 12px 24px -8px rgba(18,52,77,.08);margin-bottom:16px}
+    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.row{display:flex;gap:10px;flex-wrap:wrap}
+    input,select,button{border-radius:30px;border:1px solid #d5e2ec;padding:10px 14px}.btn-primary{background:#1e4459;color:#fff;border:none;font-weight:600;cursor:pointer}
+    table{width:100%;border-collapse:collapse;margin-top:12px}th,td{text-align:left;padding:.9rem .8rem;border-bottom:1px solid #ecf3f9}th{color:#3b6079;border-bottom:2px solid #e2ecf3}
+  </style>
+</head>
+<body>
+  <div class="management-panel">
+    <h2>读者登记（管理员）</h2>
+    <div class="grid-3" id="registerGrid">
+      <input id="rid" placeholder="读者编号（示例：R1003）"><input id="rname" placeholder="姓名"><select id="rgender"><option value="">性别</option><option>男</option><option>女</option></select>
+      <select id="rtype"><option value="">读者类型</option><option>学生</option><option>教师</option><option>社会读者</option></select><input id="remail" placeholder="邮箱"><input id="rphone" placeholder="电话">
+    </div>
+    <div class="row" style="margin-top:12px"><button id="registerBtn" class="btn-primary">登记读者</button></div>
+  </div>
+
+  <div class="management-panel">
+    <h2>读者信息查询与修改</h2>
+    <div class="row"><input id="fid" placeholder="读者编号"><input id="fname" placeholder="姓名"><select id="fgender"><option value="">性别</option><option>男</option><option>女</option></select><select id="ftype"><option value="">读者类型</option><option>学生</option><option>教师</option><option>社会读者</option></select></div>
+    <table><thead><tr><th>编号</th><th>姓名</th><th>性别</th><th>类型</th><th>邮箱</th><th>电话</th><th>修改时间</th><th>操作</th></tr></thead><tbody id="readerBody"></tbody></table>
+  </div>
+
+  <div class="management-panel">
+    <h2>读者账号注销（管理员）</h2>
+    <table><thead><tr><th>读者编号</th><th>姓名</th><th>未还图书数</th><th>操作</th></tr></thead><tbody id="cancelBody"></tbody></table>
+  </div>
+
+<script>
+(function(){
+  var state={readers:[{ id:'R1001',name:'张三',gender:'男',type:'学生',email:'zhangsan@lib.com',phone:'18800000000',unreturnedCount:0,active:true,updatedAt:'2026-04-01 10:00:00'},{ id:'R1002',name:'李芳',gender:'女',type:'学生',email:'lifang@lib.com',phone:'13812345678',unreturnedCount:1,active:true,updatedAt:'2026-04-02 09:30:00'},{ id:'R1003',name:'王磊',gender:'男',type:'教师',email:'wanglei@lib.com',phone:'15987654321',unreturnedCount:0,active:true,updatedAt:'2026-04-03 14:20:00'},{ id:'R1004',name:'赵丽',gender:'女',type:'教师',email:'zhaoli@lib.com',phone:'18712345678',unreturnedCount:2,active:false,updatedAt:'2026-03-28 11:15:00'},{ id:'R1005',name:'陈晨',gender:'男',type:'学生',email:'chenchen@lib.com',phone:'13678901234',unreturnedCount:0,active:true,updatedAt:'2026-04-04 08:45:00'}],readerPasswords:{R1001:'123456',R1002:'123456'},readerKeyword:'',readerFilterForm:{id:'',name:'',gender:'',type:''},registerForm:{id:'',name:'',gender:'',type:'',email:'',phone:''}};
+  function now(){return new Date().toLocaleString('zh-CN',{hour12:false})} function notify(m){alert(m)}
+  function isValidEmail(v){return /^\S+@\S+\.\S+$/.test(v||'')} function isValidPhone(v){return /^1\d{10}$/.test(v||'')}
+  function activeReaders(){return state.readers.filter(r=>r.active!==false)}
+  function filteredReaders(){var keyword=state.readerKeyword.trim().toLowerCase(),id=(state.readerFilterForm.id||'').trim().toLowerCase(),name=(state.readerFilterForm.name||'').trim().toLowerCase(),gender=state.readerFilterForm.gender||'',type=state.readerFilterForm.type||'';return activeReaders().filter(function(r){var mk=!keyword||r.id.toLowerCase().includes(keyword)||r.name.toLowerCase().includes(keyword),mi=!id||r.id.toLowerCase().includes(id),mn=!name||r.name.toLowerCase().includes(name),mg=!gender||(r.gender||'')===gender,mt=!type||(r.type||'')===type;return mk&&mi&&mn&&mg&&mt})}
+  function submitRegister(){var f=state.registerForm;if(!f.id||!f.name||!f.phone)return notify('请至少填写编号、姓名、电话');if(state.readers.some(i=>i.id===f.id))return notify('登记失败：读者编号已存在');if(!isValidEmail(f.email)||!isValidPhone(f.phone))return notify('邮箱或手机号格式错误');state.readers.push({id:f.id,name:f.name,gender:f.gender||'未设置',type:f.type||'学生',email:f.email,phone:f.phone,unreturnedCount:0,active:true,updatedAt:now()});state.readerPasswords[f.id]='123456';state.registerForm={id:'',name:'',gender:'',type:'',email:'',phone:''};notify('读者登记成功，系统已发送激活指引');render()}
+  function saveReader(id){var r=state.readers.find(x=>x.id===id);if(!r)return;if(!r.email||!r.phone||!isValidEmail(r.email)||!isValidPhone(r.phone))return notify('邮箱和电话不能为空且格式必须正确');r.updatedAt=now();notify('读者信息已更新');render()}
+  function cancelReader(id){var r=state.readers.find(x=>x.id===id);if(!r)return;if(r.unreturnedCount>0)return notify('注销失败：该读者有未还图书');r.active=false;r.cancelledAt=new Date().toISOString().slice(0,10);notify('已逻辑注销该读者账号');render()}
+  function resetPwd(id){state.readerPasswords[id]='123456';notify('已经将密码重置为123456')}
+  function render(){['rid','rname','rgender','rtype','remail','rphone'].forEach((k,i)=>{var key=['id','name','gender','type','email','phone'][i];document.getElementById(k).value=state.registerForm[key]||''});document.getElementById('readerBody').innerHTML=filteredReaders().map(r=>`<tr><td>${r.id}</td><td>${r.name}</td><td>${r.gender||'-'}</td><td><select data-type="${r.id}"><option ${r.type==='学生'?'selected':''}>学生</option><option ${r.type==='教师'?'selected':''}>教师</option><option ${r.type==='社会读者'?'selected':''}>社会读者</option></select></td><td><input data-email="${r.id}" value="${r.email||''}"></td><td><input data-phone="${r.id}" value="${r.phone||''}"></td><td>${r.updatedAt||'-'}</td><td><button data-save="${r.id}">保存</button> <button data-rst="${r.id}">重置密码</button></td></tr>`).join('')||'<tr><td colspan="8">暂无数据</td></tr>';document.getElementById('cancelBody').innerHTML=activeReaders().map(r=>`<tr><td>${r.id}</td><td>${r.name}</td><td>${r.unreturnedCount||0}</td><td><button data-cancel="${r.id}">注销</button></td></tr>`).join('')||'<tr><td colspan="4">暂无数据</td></tr>'}
+  registerGrid.addEventListener('input',()=>{state.registerForm.id=rid.value.trim();state.registerForm.name=rname.value.trim();state.registerForm.gender=rgender.value;state.registerForm.type=rtype.value;state.registerForm.email=remail.value.trim();state.registerForm.phone=rphone.value.trim()});
+  registerBtn.onclick=submitRegister;
+  ;['fid','fname','fgender','ftype'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{state.readerFilterForm.id=fid.value.trim();state.readerFilterForm.name=fname.value.trim();state.readerFilterForm.gender=fgender.value;state.readerFilterForm.type=ftype.value;render()}));
+  readerBody.addEventListener('input',e=>{var id=e.target.dataset.type||e.target.dataset.email||e.target.dataset.phone;if(!id)return;var r=state.readers.find(x=>x.id===id);if(!r)return;if(e.target.dataset.type)r.type=e.target.value;if(e.target.dataset.email)r.email=e.target.value.trim();if(e.target.dataset.phone)r.phone=e.target.value.trim()});
+  readerBody.addEventListener('click',e=>{var s=e.target.dataset.save,rt=e.target.dataset.rst;if(s)saveReader(s);if(rt)resetPwd(rt)});
+  cancelBody.addEventListener('click',e=>{var id=e.target.dataset.cancel;if(id)cancelReader(id)});
+  render();
+})();
+</script>
+</body>
+</html>
