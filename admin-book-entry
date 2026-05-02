@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理员图书录入与管理</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', Arial, sans-serif; margin: 0; padding: 20px; background: linear-gradient(145deg, #f0f6fc 0%, #e0ecf5 100%); color: #1a3a4f; }
+    .management-panel { background: #fff; border-radius: 28px; padding: 1.8rem; box-shadow: 0 12px 24px -8px rgba(18,52,77,.08); margin-bottom: 16px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .search-box, input, select, button { border-radius: 30px; border: 1px solid #d5e2ec; padding: 10px 14px; }
+    .btn-primary { background: #1e4459; color: #fff; border: none; font-weight: 600; cursor: pointer; }
+    .action-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: .9rem .8rem; border-bottom: 1px solid #ecf3f9; }
+    th { color: #3b6079; border-bottom: 2px solid #e2ecf3; }
+    .cover-preview { width: 56px; height: 80px; border-radius: 8px; object-fit: cover; background: #e2ecf3; }
+  </style>
+</head>
+<body>
+  <div class="management-panel">
+    <h2>图书录入（管理员）</h2>
+    <div class="grid-3" id="formGrid">
+      <input id="isbn" placeholder="ISBN" /><input id="name" placeholder="书名" /><input id="author" placeholder="作者" />
+      <input id="publisher" placeholder="出版社" /><input id="category" placeholder="分类" /><input id="shelf" placeholder="书架位置" />
+      <input id="price" type="number" step="0.01" placeholder="单价" /><input id="count" type="number" placeholder="数量" /><div><img id="coverPreview" class="cover-preview" alt="封面预览" /></div>
+    </div>
+    <div class="action-bar">
+      <input id="coverInput" type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" />
+      <button id="addBtn" class="btn-primary">录入图书</button>
+      <button id="exportBtn">导出 JSON</button>
+      <input id="importInput" type="file" accept=".json,application/json" />
+    </div>
+  </div>
+  <div class="management-panel">
+    <h2>图书列表</h2><table><thead><tr><th>ISBN</th><th>封面</th><th>书名</th><th>作者</th><th>分类</th><th>数量</th><th>状态</th><th>操作</th></tr></thead><tbody id="bookRows"></tbody></table>
+  </div>
+  <script>
+  (function(){
+    var D='data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="110"><rect width="100%" height="100%" fill="%23e5e7eb"/></svg>';
+    var state={books:[
+    {isbn:'1000000000001',name:'编译原理',author:'[美]Arfled',publisher:'机械工业出版社',cover:'imagines/byyl.png',category:'TP301',shelf:'A2-编译原理区',price:89.00,count:6,status:'在馆',active:true,updatedAt:'2026-04-01 10:00:00'},
+    {isbn:'1000000000002',name:'数据库系统原理',author:'[中]王珊',publisher:'高等教育出版社',cover:'imagines/db.png',category:'TP302',shelf:'A2-数据库区',price:null,count:4,status:'在馆',active:true,updatedAt:'2026-04-01 10:20:00'},
+    {isbn:'1000000000003',name:'计算机网络',author:'王志',publisher:'机械工业出版社',cover:'imagines/jw.png',category:'TP303',shelf:'A1-计网区',price:59.50,count:8,status:'借出',active:true,updatedAt:'2026-04-02 09:20:00'},
+    {isbn: '1000000000004', name: '操作系统原理', author: '陈向群', publisher: '机械工业出版社', cover: 'imagines/os.png', category: 'TP304', shelf: 'A1-算法理论区', price: 49.00, count: 5, status: '在馆', active: true, updatedAt: '2026-04-02 10:10:00' },
+    {isbn: '1000000000005', name: '计算机组成原理(第3版)', author: '唐朔飞', publisher: '高等教育出版社', cover: 'imagines/jz.png', category: 'TP303', shelf: 'A2-系统架构区', price: 38.50, count: 7, status: '在馆', active: true, updatedAt: '2026-04-02 11:00:00' },
+    {isbn: '1000000000006', name: '高等数学(第7版)', author: '同济大学数学系', publisher: '高等教育出版社', cover: 'imagines/math.png', category: 'TP306', shelf: 'B1-网络技术区', price: 69.80, count: 6, status: '预约', active: true, updatedAt: '2026-04-03 13:10:00' },
+    {isbn: '1000000000007', name: '软件工程导论', author: '弗兰克·徐', publisher: '机械工业出版社', cover: 'imagines/rjgc.png', category: 'TP305', shelf: 'A1-算法理论区', price: null, count: 7, status: '借出', active: true, updatedAt: '2026-04-03 14:20:00' },
+    {isbn: '1000000000008', name: '算法设计与分析', author: '王红梅', publisher: '清华大学出版社', cover: 'imagines/sf.png', category: 'TP306', shelf: 'B1-网络技术区', price: 69.80, count: 6, status: '预约', active: true, updatedAt: '2026-04-03 13:10:00' },
+    {isbn: '1000000000009', name: '数据结构（C语言版 第2版）', author: '严蔚敏', publisher: '人民邮电出版社', cover: 'imagines/sjjg.png', category: 'TP306', shelf: 'B1-网络技术区', price: 69.80, count: 6, status: '预约', active: true, updatedAt: '2026-04-03 13:10:00' }
+    ],categories:['计算机/算法','计算机/前端','计算机/数据库'],bookStatusLogs:[],bookForm:{isbn:'',name:'',author:'',publisher:'',cover:'',category:'',shelf:'',price:null,count:null}
+    };
+    function now(){return new Date().toLocaleString('zh-CN',{hour12:false})} function n(m){alert(m)} function active(){return state.books.filter(b=>b.active!==false)}
+    function upload(file){if(!file)return;var fn=(file.name||'').toLowerCase();if(!(file.type==='image/jpeg'||file.type==='image/png'||/\.jpe?g$|\.png$/.test(fn)))return n('封面上传失败：仅支持 JPG/PNG 图片');var fr=new FileReader();fr.onload=e=>{state.bookForm.cover=e.target.result;n('已上传录入封面');render()};fr.readAsDataURL(file)}
+    function add(){var f=state.bookForm;if(!f.isbn||!f.name||!f.author||!f.publisher)return n('ISBN、书名、作者、出版社不能为空');if(state.books.some(i=>i.isbn===f.isbn&&i.active!==false))return n('录入失败：ISBN 已存在');state.books.push({isbn:f.isbn,name:f.name,author:f.author,publisher:f.publisher,cover:f.cover||'',category:f.category||'未分类',shelf:f.shelf||'',price:f.price||0,count:f.count||0,status:'在馆',active:true,updatedAt:now()});if(f.category&&!state.categories.includes(f.category))state.categories.push(f.category);state.bookForm={isbn:'',name:'',author:'',publisher:'',cover:'',category:'',shelf:'',price:null,count:null};n('图书录入成功');render()}
+    function exp(){var b=new Blob([JSON.stringify({books:state.books,categories:state.categories,bookStatusLogs:state.bookStatusLogs},null,2)],{type:'application/json;charset=utf-8'});var u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download='library-data.json';document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(u)}
+    function imp(file){if(!file)return;var r=new FileReader();r.onload=e=>{try{var p=JSON.parse(e.target.result);if(Array.isArray(p.books))state.books=p.books;if(Array.isArray(p.categories))state.categories=p.categories;if(Array.isArray(p.bookStatusLogs))state.bookStatusLogs=p.bookStatusLogs;n('数据导入成功');render()}catch(_){n('数据导入失败：JSON 格式不正确')}};r.readAsText(file,'utf-8')}
+    function render(){document.getElementById('coverPreview').src=state.bookForm.cover||D;['isbn','name','author','publisher','category','shelf','price','count'].forEach(k=>document.getElementById(k).value=state.bookForm[k]??'');document.getElementById('bookRows').innerHTML=active().map(b=>`<tr><td>${b.isbn}</td><td><img src="${b.cover||D}" alt="封面" class="cover-preview"></td><td>${b.name}</td><td>${b.author}</td><td>${b.category||''}</td><td>${b.count||0}</td><td>${b.status}</td><td><button data-del="${b.isbn}">删除</button></td></tr>`).join('')||'<tr><td colspan="8">暂无图书</td></tr>'}
+    document.getElementById('formGrid').addEventListener('input',()=>{state.bookForm.isbn=isbn.value.trim();state.bookForm.name=name.value.trim();state.bookForm.author=author.value.trim();state.bookForm.publisher=publisher.value.trim();state.bookForm.category=category.value.trim();state.bookForm.shelf=shelf.value.trim();state.bookForm.price=price.value?Number(price.value):null;state.bookForm.count=count.value?Number(count.value):null})
+    coverInput.onchange=e=>upload(e.target.files[0]); addBtn.onclick=add; exportBtn.onclick=exp; importInput.onchange=e=>imp(e.target.files[0]);
+    document.getElementById('bookRows').onclick=e=>{var isbn=e.target.getAttribute('data-del');if(!isbn)return;var b=state.books.find(x=>x.isbn===isbn);if(!b)return;if(b.status==='借出')return alert('出借中，禁止删除');b.active=false;b.updatedAt=now();n('删除成功');render()}
+    render();
+  })();
+  </script>
+</body>
+</html>
