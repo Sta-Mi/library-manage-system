@@ -227,6 +227,8 @@
   <div class="nav-menu">
     <div class="nav-item" data-page="dashboard"><i class="fas fa-chart-pie"></i> 仪表盘</div>
     <div class="nav-item" data-page="books"><i class="fas fa-book"></i> 图书查询</div>
+    <div class="nav-item" data-page="book-entry"><i class="fas fa-square-plus"></i> 图书录入</div>
+    <div class="nav-item" data-page="reader-entry"><i class="fas fa-address-card"></i> 读者管理</div>
     <div class="nav-item active" data-page="circulation"><i class="fas fa-right-left"></i> 借阅管理</div>
     <div class="nav-item" data-page="records"><i class="fas fa-clock-rotate-left"></i> 借阅记录查询</div>
     <div class="nav-item" data-page="users"><i class="fas fa-users-gear"></i> 用户管理</div>
@@ -268,6 +270,26 @@
         </thead>
         <tbody id="bookTableBody"></tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- 图书录入视图 -->
+  <div id="book-entryView" class="hidden">
+    <div class="page-header">
+      <h1><i class="fas fa-square-plus"></i> 图书录入与管理</h1>
+    </div>
+    <div class="management-panel" style="padding:0; overflow:hidden;">
+      <iframe src="admin-book-entry.html" title="图书录入" style="width:100%; min-height:900px; border:none;"></iframe>
+    </div>
+  </div>
+
+  <!-- 读者管理视图 -->
+  <div id="reader-entryView" class="hidden">
+    <div class="page-header">
+      <h1><i class="fas fa-address-card"></i> 读者录入与管理</h1>
+    </div>
+    <div class="management-panel" style="padding:0; overflow:hidden;">
+      <iframe src="admin-reader-entry.html" title="读者管理" style="width:100%; min-height:1000px; border:none;"></iframe>
     </div>
   </div>
 
@@ -450,7 +472,7 @@
         document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
         item.classList.add('active');
         const page = item.dataset.page;
-        ['dashboardView','booksView','circulationView','recordsView','usersView','rolesView'].forEach(v => 
+        ['dashboardView','booksView','book-entryView','reader-entryView','circulationView','recordsView','usersView','rolesView'].forEach(v => 
           document.getElementById(v).classList.add('hidden')
         );
         document.getElementById(page+'View').classList.remove('hidden');
