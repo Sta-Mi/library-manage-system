@@ -214,9 +214,13 @@
       <div class="input-group">
         <div class="input-label"><i class="fas fa-shield-alt"></i> 验证码</div>
         <div class="captcha-row">
-          <input type="text" id="captchaInput" class="input-field captcha-input" placeholder="验证码" maxlength="4" required>
-          <div class="captcha-display" id="captchaCode">A3B8</div>
+          <input type="text" id="emailInput" class="input-field captcha-input" placeholder="邮箱" required>
+          <button type="button" class="captcha-display" id="captchaCode" style="font-size:0.95rem; letter-spacing:0;">获取验证码</button>
         </div>
+      </div>
+      <div class="input-group">
+        <div class="input-label"><i class="fas fa-envelope-open-text"></i> 邮箱验证码</div>
+        <input type="text" id="captchaInput" class="input-field" placeholder="输入邮箱收到的验证码" maxlength="8" required>
       </div>
       <div class="form-extra">
         <a href="#" class="forgot-link" id="forgotLink"><i class="far fa-question-circle"></i> 忘记密码？</a>
@@ -249,6 +253,25 @@
         <div class="input-label">确认密码</div>
         <input type="password" id="regConfirm" class="input-field" placeholder="再次输入密码" required>
       </div>
+      <div class="input-group">
+        <div class="input-label">姓名</div>
+        <input type="text" id="regName" class="input-field" placeholder="真实姓名" required>
+      </div>
+      <div class="input-group">
+        <div class="input-label">手机号</div>
+        <input type="text" id="regTel" class="input-field" placeholder="11位手机号" required>
+      </div>
+      <div class="input-group">
+        <div class="input-label">邮箱</div>
+        <div class="captcha-row">
+          <input type="email" id="regEmail" class="input-field captcha-input" placeholder="邮箱地址" required>
+          <button type="button" class="captcha-display" id="regCodeBtn" style="font-size:0.95rem; letter-spacing:0;">获取验证码</button>
+        </div>
+      </div>
+      <div class="input-group">
+        <div class="input-label">邮箱验证码</div>
+        <input type="text" id="regVerifyCode" class="input-field" placeholder="输入注册验证码" required>
+      </div>
       <button type="submit" class="btn-login" style="margin-top: 12px;">注册</button>
       <div id="regMessage" class="message-area"></div>
     </form>
@@ -260,14 +283,7 @@
 
 <script>
   (function(){
-    const STORAGE_USERS = 'lib_users_v2';
-    // 初始化默认账号
-    if (!localStorage.getItem(STORAGE_USERS)) {
-      localStorage.setItem(STORAGE_USERS, JSON.stringify([
-        { username: 'reader', password: '123456', role: 'reader' },
-        { username: 'admin', password: 'admin123', role: 'admin' }
-      ]));
-    }
+    const API_BASE_URL = 'http://127.0.0.1:8082/api';
 
     const loginView = document.getElementById('loginView');
     const registerView = document.getElementById('registerView');
@@ -283,18 +299,39 @@
     const captchaInput = document.getElementById('captchaInput');
     const forgotLink = document.getElementById('forgotLink');
 
+    const regCodeBtn = document.getElementById('regCodeBtn');
     let selectedRole = 'reader';
-    let currentCaptcha = 'A3B8';
 
-    function generateCaptcha() {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-      let code = '';
-      for(let i=0; i<4; i++) code += chars[Math.floor(Math.random()*chars.length)];
-      captchaCode.textContent = code;
-      return code;
+    async function postJson(path, body, token='') {
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const resp = await fetch(`${API_BASE_URL}${path}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body)
+      });
+      return resp.json();
     }
-    captchaCode.addEventListener('click', ()=> { currentCaptcha = generateCaptcha(); });
-    currentCaptcha = generateCaptcha();
+    async function requestVerifyCode(username, email, messageEl) {
+      if (!username || !email) {
+        messageEl.textContent = '请先填写用户名和邮箱';
+        return;
+      }
+      const result = await postJson('/get_verify_code', { username, email });
+      messageEl.style.color = result.success ? '#1b6b4c' : '#c74545';
+      messageEl.textContent = result.message || (result.success ? '验证码已发送' : '验证码发送失败');
+    }
+
+    captchaCode.addEventListener('click', ()=> {
+      const username = document.getElementById('loginUsername').value.trim();
+      const email = document.getElementById('emailInput').value.trim();
+      requestVerifyCode(username, email, loginMessage);
+    });
+    regCodeBtn.addEventListener('click', ()=> {
+      const username = document.getElementById('regUsername').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      requestVerifyCode(username, email, regMessage);
+    });
 
     readerTab.addEventListener('click', ()=> {
       readerTab.classList.add('active');
@@ -316,33 +353,35 @@
       loginView.classList.remove('hidden');
     });
 
-    loginForm.addEventListener('submit', (e)=> {
+    loginForm.addEventListener('submit', async (e)=> {
       e.preventDefault();
       const username = document.getElementById('loginUsername').value.trim();
       const password = document.getElementById('loginPassword').value;
-      const captcha = captchaInput.value.trim();
+      const verify_code = captchaInput.value.trim();
       if (!username || !password) {
         loginMessage.textContent = '请填写用户名和密码';
         return;
       }
-      if (captcha.toUpperCase() !== currentCaptcha.toUpperCase()) {
-        loginMessage.textContent = '验证码错误';
-        currentCaptcha = generateCaptcha();
+      if (!verify_code) {
+        loginMessage.textContent = '请输入邮箱验证码';
         return;
       }
-      const users = JSON.parse(localStorage.getItem(STORAGE_USERS)) || [];
-      const user = users.find(u => u.username === username && u.password === password);
-      if (!user) {
-        loginMessage.textContent = '用户名或密码错误';
-        currentCaptcha = generateCaptcha();
+      
+      const result = await postJson('/login', { username, password, verify_code });
+      if (!result.success) {
+        loginMessage.style.color = '#c74545';
+        loginMessage.textContent = result.message || '登录失败';
         return;
       }
-      if (user.role !== selectedRole) {
+      const { token, user_role, reader_info } = result.data || {};
+      const role = Number(user_role) === 2 ? 'admin' : 'reader';
+      if (role !== selectedRole) {
+        loginMessage.style.color = '#c74545';
         loginMessage.textContent = `该账号不是${selectedRole==='admin'?'管理员':'读者'}`;
-        currentCaptcha = generateCaptcha();
         return;
       }
-      // 登录成功，保存当前用户并跳转
+      sessionStorage.setItem('accessToken', token || '');
+      const user = { username, role, user_role, reader_info };
       sessionStorage.setItem('currentUser', JSON.stringify(user));
       if (user.role === 'admin') {
         window.location.href = './admin.html';
@@ -351,26 +390,61 @@
       }
     });
 
-    registerForm.addEventListener('submit', (e)=> {
+    registerForm.addEventListener('submit', async (e)=> {
       e.preventDefault();
       const username = document.getElementById('regUsername').value.trim();
       const pwd = document.getElementById('regPassword').value;
       const confirm = document.getElementById('regConfirm').value;
+      const name = document.getElementById('regName').value.trim();
+      const tel = document.getElementById('regTel').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const verify_code = document.getElementById('regVerifyCode').value.trim();
       if (username.length<3) { regMessage.textContent='用户名至少3位'; return; }
       if (pwd.length<6) { regMessage.textContent='密码至少6位'; return; }
       if (pwd !== confirm) { regMessage.textContent='两次密码不一致'; return; }
-      const users = JSON.parse(localStorage.getItem(STORAGE_USERS)) || [];
-      if (users.find(u=>u.username===username)) { regMessage.textContent='用户名已存在'; return; }
-      users.push({ username, password: pwd, role: 'reader' });
-      localStorage.setItem(STORAGE_USERS, JSON.stringify(users));
-      alert('注册成功！请登录');
-      registerView.classList.add('hidden');
-      loginView.classList.remove('hidden');
+      const result = await postJson('/register', {
+        username,
+        password: pwd,
+        name,
+        tel,
+        email,
+        verify_code
+      });
+      regMessage.style.color = result.success ? '#1b6b4c' : '#c74545';
+      if (!result.success) {
+        regMessage.textContent = result.message || '注册失败';
+        return;
+      }
+      const { token, user_role, reader_info } = result.data || {};
+      sessionStorage.setItem('accessToken', token || '');
+      sessionStorage.setItem('currentUser', JSON.stringify({ username, role: Number(user_role) === 2 ? 'admin' : 'reader', user_role, reader_info }));
+      window.location.href = './reader.html';
     });
 
     forgotLink.addEventListener('click', (e)=> {
       e.preventDefault();
-      alert('请联系管理员重置密码。测试账号：reader/123456 ； admin/admin123');
+      const mode = prompt('请输入操作：1=找回密码（邮箱验证码），2=修改密码（旧密码）');
+      if (mode === '1') {
+        const username = prompt('请输入用户名');
+        const verify_code = prompt('请输入邮箱验证码');
+        const new_password = prompt('请输入新密码');
+        if (!username || !verify_code || !new_password) return;
+        postJson('/findback_account', { username, verify_code, new_password }).then((result) => {
+          alert(result.message || (result.success ? '密码找回成功' : '密码找回失败'));
+        });
+        return;
+      }
+      if (mode === '2') {
+        const username = prompt('请输入用户名');
+        const old_password = prompt('请输入旧密码');
+        const new_password = prompt('请输入新密码');
+        if (!username || !old_password || !new_password) return;
+        postJson('/change_password', { username, old_password, new_password }).then((result) => {
+          alert(result.message || (result.success ? '密码修改成功' : '密码修改失败'));
+        });
+        return;
+      }
+      alert('已取消操作');
     });
   })();
 </script>
