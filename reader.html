@@ -119,26 +119,19 @@
 
 <script>
   (function(){
-    const STORAGE_USERS = 'lib_users_v2';
-    const STORAGE_BOOKS = 'lib_books';
-    const STORAGE_RECORDS = 'lib_records';
+    const API_BASE_URL = 'http://127.0.0.1:8082/api';
     
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    const token = sessionStorage.getItem('accessToken') || '';
     if (!currentUser || currentUser.role !== 'reader') window.location.href = 'login.html';
-
-    // 初始化数据（与管理员共享）
-    if (!localStorage.getItem(STORAGE_BOOKS)) {
-      localStorage.setItem(STORAGE_BOOKS, JSON.stringify([
-        { id: 'b1', title: '三体：黑暗森林', author: '刘慈欣', isbn: '9787536692930', status: 'available', location: 'A区-01' },
-        { id: 'b2', title: '人类群星闪耀时', author: '茨威格', isbn: '9787108040512', status: 'borrowed', location: 'B区-12' },
-        { id: 'b3', title: '深度学习入门', author: '斋藤康毅', isbn: '9787115584532', status: 'available', location: 'C区-05' }
-      ]));
+    let books = [];
+    let allRecords = [];
+    async function postJson(path, body, withToken = true) {
+      const headers = { 'Content-Type': 'application/json' };
+      if (withToken && token) headers.Authorization = `Bearer ${token}`;
+      const resp = await fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers, body: JSON.stringify(body || {}) });
+      return resp.json();
     }
-    
-    const books = JSON.parse(localStorage.getItem(STORAGE_BOOKS)) || [];
-    const allRecords = JSON.parse(localStorage.getItem(STORAGE_RECORDS)) || [];
-    const users = JSON.parse(localStorage.getItem(STORAGE_USERS)) || [];
-    const currentUserData = users.find(u=>u.username === currentUser.username);
 
     // 导航切换
     document.querySelectorAll('.nav-item[data-page]').forEach(item => {
@@ -155,104 +148,75 @@
     });
 
     // 渲染图书
-    function getFine(record) {
-      const end = record.returnDate || new Date().toISOString().split('T')[0];
-      const overdueDays = Math.max(0, Math.ceil((new Date(end) - new Date(record.dueDate)) / 86400000));
-      return overdueDays;
+    async function fetchBooks(filter='') {
+      const result = await postJson('/get_book_list', { title: filter || undefined, exact: false });
+      books = result?.data?.books || [];
+      renderBooks();
     }
-
-    function renderBooks(filter='') {
+    function renderBooks() {
       const tbody = document.getElementById('bookTableBody');
-      const filtered = books.filter(b => 
-        b.title.toLowerCase().includes(filter) || 
-        b.author.toLowerCase().includes(filter) ||
-        b.isbn.includes(filter)
-      );
-      tbody.innerHTML = filtered.map(b => `
-        <tr><td>${b.title}</td><td>${b.author}</td><td>${b.isbn}</td>
-          <td><span class="badge ${b.status==='available'?'returned':b.status==='borrowed'?'borrowed':'overdue'}">${
-            b.status==='available'?'可借':b.status==='borrowed'?'借出':'逾期'}</span></td>
-          <td>${b.location}</td>
-          <td>${b.status==='available'?`<button class="btn-primary" onclick="borrowBook('${b.id}')">借阅</button>`:'-'}</td>
+      tbody.innerHTML = books.map(b => `
+        <tr><td>${b.title}</td><td>${b.author}</td><td>-</td>
+          <td><span class="badge returned">可借数量: ${b.total ?? '-'}</span></td>
+          <td>${b.category_name || '-'}</td>
+          <td>-</td>
         </tr>
       `).join('');
     }
 
     // 渲染我的借阅记录（仅当前用户）
-    function renderMyRecords() {
-      const status = document.getElementById('statusFilter').value;
+    async function renderMyRecords() {
+      const statusText = document.getElementById('statusFilter').value;
+      const statusMap = { borrowed: 0, returned: 1, overdue: 2 };
+      const status = statusText ? statusMap[statusText] : undefined;
       const search = document.getElementById('recordSearch').value.toLowerCase();
-      
-      const myRecords = allRecords.filter(r => 
-        r.userId === currentUserData?.id &&
-        (!status || r.status === status) &&
-        (!search || r.bookTitle.toLowerCase().includes(search))
-      );
+      const result = await postJson('/borrow_record_list', { status });
+      const myRecords = (result?.data?.records || []).filter(r => !search || (r.book_title || '').toLowerCase().includes(search));
+      allRecords = myRecords;
       
       const tbody = document.getElementById('myRecordBody');
       tbody.innerHTML = myRecords.map(r => `
-        <tr><td>${r.bookTitle}</td><td>${r.borrowDate}</td><td>${r.dueDate}</td>
-          <td>${r.returnDate || '-'}</td>
-          <td><span class="badge ${r.status}">${
-            r.status==='borrowed'?'借阅中':r.status==='returned'?'已归还':'逾期'}</span></td>
-          <td>¥${getFine(r)}</td>
+        <tr><td>${r.book_title}</td><td>${new Date(Number(r.borrow_date)*1000).toLocaleString()}</td><td>${new Date(Number(r.due_date)*1000).toLocaleString()}</td>
+          <td>${r.return_date ? new Date(Number(r.return_date)*1000).toLocaleString() : '-'}</td>
+          <td><span class="badge ${Number(r.status)===0?'borrowed':Number(r.status)===1?'returned':'overdue'}">${
+            Number(r.status)===0?'借阅中':Number(r.status)===1?'已归还':'逾期'}</span></td>
+          <td>-</td>
           <td>
-            ${r.status!=='returned' && (r.renewCount||0)<2?`<button class="btn-primary" onclick="renewBook('${r.id}')">续借</button>`:''}
-            ${r.status!=='returned'?`<button class="btn-primary" onclick="returnBook('${r.id}')">归还</button>`:''}
-            ${getFine(r)>0?`<button class="btn-primary" onclick="payFine('${r.id}')">缴纳</button>`:''}
+            ${Number(r.status)!==1?`<button class="btn-primary" onclick="renewBook('${r.id}')">续借</button>`:''}
+            ${Number(r.status)!==1?`<button class="btn-primary" onclick="returnBookByBarcode('${r.barcode}')">归还</button>`:''}
           </td>
         </tr>
       `).join('') || '<tr><td colspan="7" style="text-align:center; padding:40px;">暂无借阅记录</td></tr>';
     }
-    window.borrowBook = (bookId) => {
-      const myBorrowing = allRecords.filter(r => r.userId === currentUserData?.id && r.status !== 'returned').length;
-      if (myBorrowing >= 5) return alert('已达借阅上限');
-      const book = books.find(b => b.id === bookId);
-      if (!book || book.status !== 'available') return alert('该书不可借');
-      const today = new Date().toISOString().split('T')[0];
-      const due = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
-      allRecords.unshift({ id: `r${Date.now()}`, userId: currentUserData.id, userName: currentUserData.username, bookId: book.id, bookTitle: book.title, borrowDate: today, dueDate: due, returnDate: null, status: 'borrowed', renewCount: 0 });
-      book.status = 'borrowed';
-      localStorage.setItem(STORAGE_BOOKS, JSON.stringify(books));
-      localStorage.setItem(STORAGE_RECORDS, JSON.stringify(allRecords));
-      renderBooks(document.getElementById('searchInput').value.toLowerCase());
-      renderMyRecords();
+    window.returnBookByBarcode = async (barcode) => {
+      const res = await postJson('/return_book', { barcode });
+      alert(res.message || (res.success ? '归还成功' : '归还失败'));
+      await renderMyRecords();
     };
-    window.returnBook = (recordId) => {
-      const record = allRecords.find(r => r.id === recordId && r.userId === currentUserData.id);
-      if (!record) return;
-      record.returnDate = new Date().toISOString().split('T')[0];
-      record.status = 'returned';
-      const book = books.find(b => b.id === record.bookId); if (book) book.status = 'available';
-      localStorage.setItem(STORAGE_BOOKS, JSON.stringify(books));
-      localStorage.setItem(STORAGE_RECORDS, JSON.stringify(allRecords));
-      renderBooks(document.getElementById('searchInput').value.toLowerCase()); renderMyRecords();
-    };
-    window.renewBook = (recordId) => {
-      const record = allRecords.find(r => r.id === recordId && r.userId === currentUserData.id);
-      if (!record || (record.renewCount || 0) >= 2) return alert('续借次数已达上限');
-      record.renewCount = (record.renewCount || 0) + 1;
-      record.dueDate = new Date(new Date(record.dueDate).getTime() + 7 * 86400000).toISOString().split('T')[0];
-      localStorage.setItem(STORAGE_RECORDS, JSON.stringify(allRecords)); renderMyRecords();
-    };
-    window.payFine = (recordId) => {
-      alert('模拟缴纳成功');
+    window.renewBook = async (recordId) => {
+      const due = String(Math.floor(Date.now() / 1000 + 7 * 24 * 3600));
+      const res = await postJson('/keep_book', { borrow_record_id: Number(recordId), due_date: due });
+      alert(res.message || (res.success ? '续借成功' : '续借失败'));
+      await renderMyRecords();
     };
 
-    document.getElementById('searchInput').addEventListener('input', e=>renderBooks(e.target.value));
+    document.getElementById('searchInput').addEventListener('input', e=>fetchBooks(e.target.value));
     document.getElementById('statusFilter')?.addEventListener('change', renderMyRecords);
     document.getElementById('recordSearch')?.addEventListener('input', renderMyRecords);
-    document.getElementById('quickBorrowBtn').addEventListener('click', ()=> {
-      const code = document.getElementById('quickBorrowCode').value.trim();
-      const book = books.find(b => b.id === code || b.isbn === code);
-      if (!book) return alert('未找到图书');
-      borrowBook(book.id);
+    document.getElementById('quickBorrowBtn').addEventListener('click', async ()=> {
+      const barcode = document.getElementById('quickBorrowCode').value.trim();
+      if (!barcode) return;
+      const due = String(Math.floor(Date.now() / 1000 + 14 * 24 * 3600));
+      const res = await postJson('/borrow_book', { barcode, due_date: due });
+      alert(res.message || (res.success ? '借阅成功' : '借阅失败'));
+      await renderMyRecords();
     });
-    document.getElementById('quickReturnBtn').addEventListener('click', ()=> {
-      const code = document.getElementById('quickReturnCode').value.trim();
-      const record = allRecords.find(r => r.userId === currentUserData.id && r.status !== 'returned' && (r.bookId === code || books.find(b => b.id === r.bookId)?.isbn === code));
-      if (!record) return alert('未找到在借记录');
-      returnBook(record.id);
+    document.getElementById('quickReturnBtn').addEventListener('click', async ()=> {
+      const barcode = document.getElementById('quickReturnCode').value.trim();
+      if (!barcode) return;
+      const res = await postJson('/return_book', { barcode });
+      alert(res.message || (res.success ? '归还成功' : '归还失败'));
+      await renderMyRecords();
     });
 
 
@@ -266,7 +230,7 @@
     });
 
     // 初始化
-    renderBooks();
+    fetchBooks();
   })();
 </script>
 </body>
