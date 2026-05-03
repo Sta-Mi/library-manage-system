@@ -68,11 +68,11 @@
   <div id="homeView">
     <div class="page-header"><h1><i class="fas fa-search"></i> 图书综合查询</h1></div>
     <div class="search-section">
-      <input type="text" placeholder="搜索书名、作者或ISBN..." id="searchInput">
+      <input type="text" placeholder="搜索书名、作者（不支持ISBN）..." id="searchInput">
       <button class="btn-primary"><i class="fas fa-search"></i> 搜索</button>
     </div>
     <table class="data-table">
-      <thead><tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>位置</th><th>操作</th></tr></thead>
+      <thead><tr><th>书名</th><th>作者</th><th>分类</th><th>可借数量</th><th>操作</th></tr></thead>
       <tbody id="bookTableBody"></tbody>
     </table>
   </div>
@@ -156,9 +156,8 @@
     function renderBooks() {
       const tbody = document.getElementById('bookTableBody');
       tbody.innerHTML = books.map(b => `
-        <tr><td>${b.title}</td><td>${b.author}</td><td>-</td>
-          <td><span class="badge returned">可借数量: ${b.total ?? '-'}</span></td>
-          <td>${b.category_name || '-'}</td>
+        <tr><td>${b.title}</td><td>${b.author}</td><td>${b.category_name || '-'}</td>
+          <td><span class="badge returned">${b.total ?? '-'}</span></td>
           <td>-</td>
         </tr>
       `).join('');
@@ -168,6 +167,11 @@
     async function renderMyRecords() {
       const statusText = document.getElementById('statusFilter').value;
       const statusMap = { borrowed: 0, returned: 1, overdue: 2 };
+      const fineResult = await postJson('/fine_record_list', {});
+      const unpaidFineMap = (fineResult?.data?.fines || []).reduce((acc, f) => {
+        if (Number(f.paid) === 0) acc[f.borrow_record_id] = Number(f.amount || 0);
+        return acc;
+      }, {});
       const status = statusText ? statusMap[statusText] : undefined;
       const search = document.getElementById('recordSearch').value.toLowerCase();
       const result = await postJson('/borrow_record_list', { status });
@@ -180,7 +184,7 @@
           <td>${r.return_date ? new Date(Number(r.return_date)*1000).toLocaleString() : '-'}</td>
           <td><span class="badge ${Number(r.status)===0?'borrowed':Number(r.status)===1?'returned':'overdue'}">${
             Number(r.status)===0?'借阅中':Number(r.status)===1?'已归还':'逾期'}</span></td>
-          <td>-</td>
+          <td>${unpaidFineMap[r.id] ? `¥${unpaidFineMap[r.id]}` : '-'}</td>
           <td>
             ${Number(r.status)!==1?`<button class="btn-primary" onclick="renewBook('${r.id}')">续借</button>`:''}
             ${Number(r.status)!==1?`<button class="btn-primary" onclick="returnBookByBarcode('${r.barcode}')">归还</button>`:''}
