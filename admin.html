@@ -233,6 +233,7 @@
     <div class="nav-item" data-page="records"><i class="fas fa-clock-rotate-left"></i> 借阅记录查询</div>
     <div class="nav-item" data-page="users"><i class="fas fa-users-gear"></i> 用户管理</div>
     <div class="nav-item" data-page="roles"><i class="fas fa-user-tag"></i> 角色权限</div>
+    <div class="nav-item" data-page="fines"><i class="fas fa-file-invoice-dollar"></i> 罚款管理</div>
   </div>
   <div class="user-info">
     <div><i class="far fa-user-circle"></i> <span id="adminName"></span></div>
@@ -387,6 +388,13 @@
     <h2>角色权限管理</h2>
     <p style="margin-top:20px;">管理员拥有全部权限，读者仅可修改个人密码和查看个人借阅记录。</p>
   </div>
+  <div id="finesView" class="hidden">
+    <div class="page-header"><h1><i class="fas fa-file-invoice-dollar"></i> 罚款管理</h1><button class="btn-primary" id="createFineBtn"><i class="fas fa-plus"></i> 新建罚款</button></div>
+    <div class="management-panel">
+      <div class="action-bar"><div class="filter-group"><input type="number" id="fineUserIdFilter" class="search-box" style="padding:10px;" placeholder="用户ID(可选)"><select id="finePaidFilter" class="search-box" style="padding:10px 20px;"><option value="">全部状态</option><option value="0">未缴</option><option value="1">已缴</option></select></div><button class="btn-primary" id="queryFineBtn">查询罚款</button></div>
+      <table class="data-table"><thead><tr><th>ID</th><th>用户ID</th><th>借阅记录ID</th><th>金额</th><th>状态</th><th>备注</th><th>创建时间</th><th>操作</th></tr></thead><tbody id="fineTableBody"></tbody></table>
+    </div>
+  </div>
 </div>
 
 <!-- 用户编辑模态框 -->
@@ -447,10 +455,12 @@
     };
 
     document.getElementById('adminName').textContent = currentUser.username;
+    postJson('/account_manage', {}).then((res)=>{ if(res?.success && res?.data?.user?.username){ document.getElementById('adminName').textContent = res.data.user.username; }}).catch(()=>{});
     
     let users = [];
     let books = [];
     let records = [];
+    let fines = [];
     
     let currentRecordPage = 1;
     const pageSize = 8;
@@ -461,7 +471,7 @@
         document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('active'));
         item.classList.add('active');
         const page = item.dataset.page;
-        ['dashboardView','booksView','book-entryView','reader-entryView','circulationView','recordsView','usersView','rolesView'].forEach(v => 
+        ['dashboardView','booksView','book-entryView','reader-entryView','circulationView','recordsView','usersView','rolesView','finesView'].forEach(v =>  
           document.getElementById(v).classList.add('hidden')
         );
         document.getElementById(page+'View').classList.remove('hidden');
@@ -471,6 +481,7 @@
         if (page==='circulation') renderCirculationPanel();
         if (page==='records') { loadUserFilter(); renderRecordTable(); }
         if (page==='users') renderUserTable();
+        if (page==='fines') renderFineTable();
       });
     });
 
@@ -561,7 +572,7 @@
           <td>
             ${r.status !== 'returned' ? `<i class="fas fa-rotate action-icon" onclick="renewRecord('${r.id}')" title="续借"></i>` : ''}
             ${r.status !== 'returned' ? `<i class="fas fa-check-circle action-icon" onclick="markReturned('${r.id}')" title="标记归还"></i>` : ''}
-            <i class="fas fa-info-circle action-icon" onclick="viewRecordDetail('${r.id}')"></i>
+            ${r.status === 'borrowed' ? `<i class="fas fa-triangle-exclamation action-icon" onclick="noteExpired('${r.id}')" title="标记逾期"></i>` : ''}<i class="fas fa-info-circle action-icon" onclick="viewRecordDetail('${r.id}')"></i>
           </td>
         </tr>
       `).join('');
@@ -732,6 +743,27 @@
         document.getElementById('userModal').classList.add('hidden');
       }
     });
+    async function loadFines() {
+      const paidVal = document.getElementById('finePaidFilter')?.value;
+      const userIdVal = document.getElementById('fineUserIdFilter')?.value.trim();
+      const res = await postJson('/admin_fine_record_list', { target_user_id: userIdVal ? Number(userIdVal) : undefined, paid: paidVal === "" ? undefined : Number(paidVal) });
+      fines = res?.data?.fines || [];
+    }
+    async function renderFineTable() {
+      await loadFines();
+      const tbody = document.getElementById('fineTableBody');
+      tbody.innerHTML = fines.map(f => `<tr><td>${f.id}</td><td>${f.reader_id ?? "-"}</td><td>${f.borrow_record_id ?? "-"}</td><td>¥${f.amount}</td><td>${Number(f.paid)===1?'已缴':'未缴'}</td><td>${f.note || "-"}</td><td>${formatTs(f.create_date)}</td><td>${Number(f.paid)===0?`<button class="btn-primary" style="padding:6px 10px;" onclick="adminPayFine(${f.id})">代缴</button>`:"-"}</td></tr>`).join("");
+    }
+    window.adminPayFine = async (fineId) => {
+      const res = await postJson('/admin_pay_fine', { fine_id: Number(fineId) });
+      alert(res.message || (res.success ? "代缴成功" : "代缴失败"));
+      await renderFineTable();
+    };
+    window.noteExpired = async (id) => {
+      const res = await postJson('/admin_note_expired', { borrow_record_id: Number(id) });
+      alert(res.message || (res.success ? "已标记逾期" : "标记失败"));
+      await renderRecordTable();
+    };
 
     // 事件监听
     document.getElementById('bookSearchInput')?.addEventListener('input', () => { renderBookTable(); });
@@ -756,6 +788,17 @@
     loadUserFilter();
     renderCirculationPanel();
     renderRecordTable();
+    document.getElementById('queryFineBtn').addEventListener('click', renderFineTable);
+    document.getElementById('createFineBtn').addEventListener('click', async () => {
+      const target_user_id = Number(prompt('目标用户ID'));
+      const amount = Number(prompt('罚款金额（正整数）', '10'));
+      if (!target_user_id || !amount || amount <= 0) return;
+      const borrow_record_id = Number(prompt('借阅记录ID（可选，填0表示不关联）', '0'));
+      const note = prompt('备注（可选）') || undefined;
+      const res = await postJson('/admin_create_fine_record', { target_user_id, amount, note, borrow_record_id });
+      alert(res.message || (res.success ? `罚款创建成功：#${res?.data?.fine_id ?? '-'}` : '创建失败'));
+      await renderFineTable();
+    });
   })();
 </script>
 </body>
