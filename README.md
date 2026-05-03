@@ -28,7 +28,15 @@
 
 ## 3. 已接入接口总览
 
-### 3.1 Reader（api01）
+### 3.1 Login&Register（api01）
+
+- `POST /api/get_verify_code`
+- `POST /api/login`
+- `POST /api/register`
+- `POST /api/findback_account`
+- `POST /api/change_password`
+
+### 3.2 Reader（api01）
 
 - `POST /api/get_book_list`
 - `POST /api/borrow_book`
@@ -37,20 +45,25 @@
 - `POST /api/keep_book`
 - `POST /api/fine_record_list`
 
-### 3.2 Admin（api01）
+### 3.3 Admin（api01）
 
 - `POST /api/admin_borrow_book`
 - `POST /api/admin_return_book`
 - `POST /api/admin_borrow_record_list`
 - `POST /api/admin_keep_book`
+- `POST /api/admin_fine_record_list`
+- `POST /api/admin_pay_fine`
+- `POST /api/admin_note_expired`
+- `POST /api/admin_create_fine_record`
 - `POST /api/admin_change_password`
 - `POST /api/admin_add_user`
 - `POST /api/admin_edit_user_info`
 - `POST /api/admin_set_user_state`
 - `POST /api/admin_delete_user`
 - `POST /api/admin_set_user_role`
+- `POST /api/account_manage`
 
-### 3.3 Reader Self（api02）
+### 3.4 Reader Self（api02）
 
 - `POST /api/reader_self_info_get`
 - `POST /api/reader_self_info_update`
