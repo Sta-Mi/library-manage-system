@@ -34,30 +34,60 @@
       <p>最近修改时间：<span id="profileUpdatedAt">-</span></p>
       <p id="avatarWrap" style="display:none;"><img id="avatarPreview" alt="头像预览" style="width:88px; height:88px; border-radius:50%; object-fit:cover;"></p>
       <button type="button" class="btn-primary" id="saveProfileBtn">保存资料</button>
+      <button type="button" class="btn-primary" id="changePwdBtn" style="margin-left:10px;">修改密码</button>
+      <button type="button" class="btn-primary" id="loadHistoryBtn" style="margin-left:10px;">加载借阅历史</button>
+      <pre id="historyBox" style="margin-top:14px; max-height:260px; overflow:auto; background:#f7fbff; padding:10px; border-radius:10px;"></pre>
     </div>
   </div>
 <script>
 (function () {
-  const STORAGE_USERS='lib_users_v2', STORAGE_READER_PROFILES='lib_reader_profiles_v1';
+  const API_BASE_URL = 'http://127.0.0.1:8082/api';
   const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+  const token = sessionStorage.getItem('accessToken') || '';
   if (!currentUser || currentUser.role !== 'reader') window.location.href='login.html';
-  const users = JSON.parse(localStorage.getItem(STORAGE_USERS)) || [];
-  const currentUserData = users.find(u=>u.username===currentUser.username);
-  let profiles = JSON.parse(localStorage.getItem(STORAGE_READER_PROFILES)) || {};
-  function renderProfile() {
-    const existed = profiles[currentUserData.id] || {};
-    document.getElementById('profileId').value = currentUserData.id || '-';
-    document.getElementById('profileName').value = existed.name || currentUserData.username || '';
-    document.getElementById('profileGender').value = existed.gender || '未设置';
-    document.getElementById('profileType').value = existed.type || '普通读者';
-    document.getElementById('profileEmail').value = existed.email || '';
-    document.getElementById('profilePhone').value = existed.phone || '';
-    document.getElementById('profileUpdatedAt').textContent = existed.updatedAt || '-';
-    if (existed.avatar) { document.getElementById('avatarPreview').src = existed.avatar; document.getElementById('avatarWrap').style.display='block'; }
-    else document.getElementById('avatarWrap').style.display='none';
+  async function postJson(path, body) {
+    const resp = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body || {})
+    });
+    return resp.json();
   }
-  document.getElementById('profileAvatarUpload').addEventListener('change',(e)=>{ const file=e.target.files?.[0]; if(!file)return; const r=new FileReader(); r.onload=()=>{ profiles[currentUserData.id]={...(profiles[currentUserData.id]||{}),avatar:r.result}; localStorage.setItem(STORAGE_READER_PROFILES,JSON.stringify(profiles)); renderProfile();}; r.readAsDataURL(file);});
-  document.getElementById('saveProfileBtn').addEventListener('click',()=>{ profiles[currentUserData.id]={...(profiles[currentUserData.id]||{}), name:document.getElementById('profileName').value.trim(), gender:profiles[currentUserData.id]?.gender||'未设置', type:profiles[currentUserData.id]?.type||'普通读者', email:document.getElementById('profileEmail').value.trim(), phone:document.getElementById('profilePhone').value.trim(), updatedAt:new Date().toLocaleString('zh-CN',{hour12:false})}; localStorage.setItem(STORAGE_READER_PROFILES,JSON.stringify(profiles)); renderProfile(); alert('个人资料已保存');});
+  async function renderProfile() {
+    const res = await postJson('/reader_self_info_get', {});
+    const info = res?.data || {};
+    document.getElementById('profileId').value = info.reader_id || '-';
+    document.getElementById('profileName').value = info.name || '';
+    document.getElementById('profileGender').value = '未设置';
+    document.getElementById('profileType').value = '普通读者';
+    document.getElementById('profileEmail').value = info.email || '';
+    document.getElementById('profilePhone').value = info.tel || '';
+    document.getElementById('profileUpdatedAt').textContent = new Date().toLocaleString('zh-CN', { hour12: false });
+  }
+  document.getElementById('profileAvatarUpload').addEventListener('change',()=>{ alert('当前后端接口未提供头像上传，暂不支持。'); });
+  document.getElementById('saveProfileBtn').addEventListener('click',async ()=>{
+    const payload = {
+      name: document.getElementById('profileName').value.trim(),
+      tel: document.getElementById('profilePhone').value.trim(),
+      email: document.getElementById('profileEmail').value.trim()
+    };
+    const res = await postJson('/reader_self_info_update', payload);
+    alert(res.message || (res.success ? '个人资料已保存' : '保存失败'));
+    if (res.success) renderProfile();
+  });
+  document.getElementById('changePwdBtn').addEventListener('click', async ()=> {
+    const old_password = prompt('请输入当前密码');
+    const new_password = prompt('请输入新密码');
+    if (!old_password || !new_password) return;
+    const res = await postJson('/reader_self_password_change', { old_password, new_password });
+    alert(res.message || (res.success ? '密码修改成功' : '密码修改失败'));
+  });
+  document.getElementById('loadHistoryBtn').addEventListener('click', async ()=> {
+    const start_date = prompt('开始日期(可空，格式 YYYY-MM-DD)') || undefined;
+    const end_date = prompt('结束日期(可空，格式 YYYY-MM-DD)') || undefined;
+    const res = await postJson('/reader_self_borrow_history', { start_date, end_date });
+    document.getElementById('historyBox').textContent = JSON.stringify(res?.data?.list || [], null, 2);
+  });
   document.getElementById('logoutBtn').addEventListener('click',()=>{ sessionStorage.removeItem('currentUser'); window.location.href='login.html'; });
   renderProfile();
 })();

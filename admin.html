@@ -424,44 +424,33 @@
 
 <script>
   (function(){
-    const STORAGE_USERS = 'lib_users_v2';
-    const STORAGE_BOOKS = 'lib_books';
-    const STORAGE_RECORDS = 'lib_records';
+    const API_BASE_URL = 'http://127.0.0.1:8082/api';
     
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+    const token = sessionStorage.getItem('accessToken') || '';
     if (!currentUser || currentUser.role !== 'admin') window.location.href = 'login.html';
+    async function postJson(path, body) {
+      const resp = await fetch(`${API_BASE_URL}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body || {})
+      });
+      return resp.json();
+    }
+    const statusTextMap = { 0: 'borrowed', 1: 'returned', 2: 'overdue' };
+    const statusCodeMap = { borrowed: 0, returned: 1, overdue: 2 };
+    const formatTs = (ts) => ts ? new Date(Number(ts) * 1000).toLocaleDateString('zh-CN') : '-';
+    const toUnixString = (dateText, end = false) => {
+      if (!dateText) return undefined;
+      const date = new Date(`${dateText}T${end ? '23:59:59' : '00:00:00'}`);
+      return String(Math.floor(date.getTime() / 1000));
+    };
 
     document.getElementById('adminName').textContent = currentUser.username;
     
-    // 初始化数据
-    if (!localStorage.getItem(STORAGE_USERS)) {
-      localStorage.setItem(STORAGE_USERS, JSON.stringify([
-        { id: '1', username: 'admin', password: 'admin123', role: 'admin', status: 'active', lastLogin: '2024-01-15' },
-        { id: '2', username: 'reader', password: '123456', role: 'reader', status: 'active', lastLogin: '2024-01-14' },
-        { id: '3', username: 'zhang_san', password: '111111', role: 'reader', status: 'active', lastLogin: '2024-01-10' }
-      ]));
-    }
-    
-    if (!localStorage.getItem(STORAGE_BOOKS)) {
-      localStorage.setItem(STORAGE_BOOKS, JSON.stringify([
-        { id: 'b1', title: '三体：黑暗森林', author: '刘慈欣', isbn: '9787536692930', status: 'available', location: 'A区-01' },
-        { id: 'b2', title: '人类群星闪耀时', author: '茨威格', isbn: '9787108040512', status: 'borrowed', location: 'B区-12' },
-        { id: 'b3', title: '深度学习入门', author: '斋藤康毅', isbn: '9787115584532', status: 'available', location: 'C区-05' },
-        { id: 'b4', title: '设计的故事', author: '夏洛特·菲尔', isbn: '9787559637857', status: 'overdue', location: 'A区-08' }
-      ]));
-    }
-    
-    if (!localStorage.getItem(STORAGE_RECORDS)) {
-      localStorage.setItem(STORAGE_RECORDS, JSON.stringify([
-        { id: 'r1', userId: '2', userName: 'reader', bookId: 'b2', bookTitle: '人类群星闪耀时', borrowDate: '2024-01-10', dueDate: '2024-02-10', returnDate: null, status: 'borrowed' },
-        { id: 'r2', userId: '3', userName: 'zhang_san', bookId: 'b4', bookTitle: '设计的故事', borrowDate: '2023-12-20', dueDate: '2024-01-20', returnDate: null, status: 'overdue' },
-        { id: 'r3', userId: '2', userName: 'reader', bookId: 'b3', bookTitle: '深度学习入门', borrowDate: '2024-01-05', dueDate: '2024-02-05', returnDate: '2024-01-25', status: 'returned' }
-      ]));
-    }
-
-    let users = JSON.parse(localStorage.getItem(STORAGE_USERS)) || [];
-    let books = JSON.parse(localStorage.getItem(STORAGE_BOOKS)) || [];
-    let records = JSON.parse(localStorage.getItem(STORAGE_RECORDS)) || [];
+    let users = [];
+    let books = [];
+    let records = [];
     
     let currentRecordPage = 1;
     const pageSize = 8;
@@ -508,37 +497,51 @@
     }
 
     // 渲染图书表格
-    function renderBookTable() {
+    async function renderBookTable() {
       const search = document.getElementById('bookSearchInput')?.value.toLowerCase() || '';
-      const filtered = books.filter(b => 
+      const result = await postJson('/get_book_list', { title: search || undefined, exact: false });
+      books = result?.data?.books || [];
+      const filtered = books.filter(b =>
         b.title.toLowerCase().includes(search) || 
-        b.author.toLowerCase().includes(search) ||
-        b.isbn.includes(search)
+        b.author.toLowerCase().includes(search)
       );
       const tbody = document.getElementById('bookTableBody');
       tbody.innerHTML = filtered.map(b => `
         <tr>
-          <td>${b.title}</td><td>${b.author}</td><td>${b.isbn}</td>
-          <td><span class="badge ${b.status==='available'?'returned':b.status==='borrowed'?'borrowed':'overdue'}">${
-            b.status==='available'?'可借':b.status==='borrowed'?'借出':'逾期'}</span></td>
-          <td>${b.location}</td>
+          <td>${b.title}</td><td>${b.author}</td><td>-</td>
+          <td><span class="badge returned">可借数量：${b.total ?? 0}</span></td>
+          <td>${b.category_name || '-'}</td>
         </tr>
       `).join('');
     }
 
     // 渲染借阅记录（管理员视图：可筛选用户）
-    function renderRecordTable() {
+    async function renderRecordTable() {
       const userId = document.getElementById('userFilter').value;
       const status = document.getElementById('statusFilter').value;
       const dateFrom = document.getElementById('dateFrom').value;
       const dateTo = document.getElementById('dateTo').value;
       const search = document.getElementById('recordSearch').value.toLowerCase();
-      
+      const result = await postJson('/admin_borrow_record_list', {
+        target_user_id: userId ? Number(userId) : undefined,
+        status: status ? statusCodeMap[status] : undefined,
+        from: toUnixString(dateFrom),
+        to: toUnixString(dateTo, true)
+      });
+      records = (result?.data?.records || []).map(r => ({
+        id: r.id,
+        userId: String(r.reader_id || ''),
+        userName: `用户#${r.reader_id ?? '-'}`,
+        bookTitle: r.book_title || '-',
+        barcode: r.barcode,
+        borrowDate: formatTs(r.borrow_date),
+        dueDate: formatTs(r.due_date),
+        returnDate: formatTs(r.return_date),
+        status: statusTextMap[Number(r.status)] || 'borrowed'
+      }));
       let filtered = records.filter(r => {
         if (userId && r.userId !== userId) return false;
         if (status && r.status !== status) return false;
-        if (dateFrom && r.borrowDate < dateFrom) return false;
-        if (dateTo && r.borrowDate > dateTo) return false;
         if (search && !(r.bookTitle.toLowerCase().includes(search) || r.userName.toLowerCase().includes(search))) return false;
         return true;
       });
@@ -570,18 +573,13 @@
       document.getElementById('recordPagination').innerHTML = pagHtml;
     }
 
-    window.markReturned = (id) => {
+    window.markReturned = async (id) => {
       const record = records.find(r=>r.id===id);
-      if(record) {
-        record.status = 'returned';
-        record.returnDate = new Date().toISOString().split('T')[0];
-        const book = books.find(b=>b.id===record.bookId);
-        if(book) book.status = 'available';
-        localStorage.setItem(STORAGE_RECORDS, JSON.stringify(records));
-        localStorage.setItem(STORAGE_BOOKS, JSON.stringify(books));
-        renderRecordTable();
-        updateStats();
-      }
+      if (!record) return;
+      const res = await postJson('/admin_return_book', { barcode: record.barcode });
+      alert(res.message || (res.success ? '归还成功' : '归还失败'));
+      await renderRecordTable();
+      updateStats();
     };
     
     window.viewRecordDetail = (id) => {
@@ -590,14 +588,13 @@
     };
     
     window.goToRecordPage = (page) => { currentRecordPage = page; renderRecordTable(); };
-    window.renewRecord = (id) => {
+    window.renewRecord = async (id) => {
       const record = records.find(r => r.id === id);
-      if (!record || record.status === 'returned') return;
-      record.renewCount = (record.renewCount || 0) + 1;
-      record.dueDate = new Date(new Date(record.dueDate).getTime() + 7 * 86400000).toISOString().split('T')[0];
-      localStorage.setItem(STORAGE_RECORDS, JSON.stringify(records));
-      renderRecordTable();
-      alert('续借成功（+7天）');
+      if (!record || record.status === 'returned') return alert('该记录已归还');
+      const due = String(Math.floor(Date.now() / 1000 + 7 * 24 * 3600));
+      const res = await postJson('/admin_keep_book', { borrow_record_id: Number(id), due_date: due });
+      alert(res.message || (res.success ? '续借成功' : '续借失败'));
+      await renderRecordTable();
     };
 
     let pendingReturnRecordId = null;
@@ -611,28 +608,19 @@
     }
     document.getElementById('borrowUserId').addEventListener('input', renderCirculationPanel);
 
-    document.getElementById('borrowConfirmBtn').addEventListener('click', () => {
+    document.getElementById('borrowConfirmBtn').addEventListener('click', async () => {
       const uid = document.getElementById('borrowUserId').value.trim();
-      const bid = document.getElementById('borrowBookId').value.trim();
-      const user = users.find(u => u.id === uid || u.username === uid);
-      const book = books.find(b => b.id === bid || b.isbn === bid);
-      if (!user || user.role !== 'reader') return alert('读者不存在');
-      if (!book || book.status !== 'available') return alert('图书不可借');
-      const borrowedCount = records.filter(r => r.userId === user.id && r.status !== 'returned').length;
-      if (borrowedCount >= 5) return alert('该读者已达借阅上限');
-      const today = new Date().toISOString().split('T')[0];
-      const due = new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0];
-      records.unshift({ id: `r${Date.now()}`, userId: user.id, userName: user.username, bookId: book.id, bookTitle: book.title, borrowDate: today, dueDate: due, returnDate: null, status: 'borrowed', renewCount: 0 });
-      book.status = 'borrowed';
-      localStorage.setItem(STORAGE_RECORDS, JSON.stringify(records));
-      localStorage.setItem(STORAGE_BOOKS, JSON.stringify(books));
-      renderCirculationPanel(); renderRecordTable(); updateStats();
-      alert('借阅办理成功');
+      const barcode = document.getElementById('borrowBookId').value.trim();
+      const due = String(Math.floor(Date.now() / 1000 + 14 * 24 * 3600));
+      const res = await postJson('/admin_borrow_book', { target_user_id: Number(uid), barcode, due_date: due });
+      alert(res.message || (res.success ? '借阅办理成功' : '借阅办理失败'));
+      await renderRecordTable();
+      updateStats();
     });
 
     document.getElementById('returnLookupBtn').addEventListener('click', () => {
       const bid = document.getElementById('returnBookId').value.trim();
-      const record = records.find(r => (r.bookId === bid || books.find(b => b.id === r.bookId)?.isbn === bid) && r.status !== 'returned');
+      const record = records.find(r => r.barcode === bid && r.status !== 'returned');
       pendingReturnRecordId = record?.id || null;
       if (!record) return document.getElementById('returnInfo').textContent = '未找到在借记录';
       document.getElementById('returnInfo').innerHTML = `借阅人：${record.userName}，借阅日期：${record.borrowDate}，应还日期：${record.dueDate}，是否逾期：${new Date(record.dueDate)<new Date()?'是':'否'}，逾期罚款：¥${getFine(record)}`;
@@ -645,6 +633,10 @@
     });
 
     // 用户管理相关（简化）
+    async function refreshUsers() {
+      // 当前接口文档未提供“用户列表”接口，这里仅维护本地会话态。
+      renderUserTable();
+    }
     function renderUserTable() {
       const tbody = document.getElementById('userTableBody');
       tbody.innerHTML = users.map(u => `
@@ -652,19 +644,97 @@
           <td><div class="status-toggle ${u.status==='active'?'active':''}" onclick="toggleStatus('${u.id}')"></div></td>
           <td>${u.lastLogin||'-'}</td>
           <td><i class="fas fa-edit action-icon" onclick="editUser('${u.id}')"></i>
-              <i class="fas fa-key action-icon" onclick="resetPassword('${u.id}')"></i></td>
+              <i class="fas fa-key action-icon" onclick="resetPassword('${u.id}')"></i>
+              <i class="fas fa-user-slash action-icon" onclick="deleteUser('${u.id}')" title="删除用户"></i></td>
         </tr>
       `).join('');
     }
     
     window.toggleStatus = (id) => {
       const user = users.find(u=>u.id===id);
-      if(user) { user.status = user.status==='active'?'inactive':'active'; 
-        localStorage.setItem(STORAGE_USERS, JSON.stringify(users)); renderUserTable(); }
+      if (!user) return;
+      postJson('/admin_set_user_state', {
+        target_user_id: Number(id),
+        enabled: user.status === 'active' ? 0 : 1
+      }).then((res) => {
+        alert(res.message || (res.success ? '状态更新成功' : '状态更新失败'));
+        if (res.success) {
+          user.status = user.status==='active'?'inactive':'active';
+          renderUserTable();
+        }
+      });
+    };
+    window.resetPassword = (id) => {
+      const next = prompt('请输入新密码（至少6位）');
+      if (!next) return;
+      postJson('/admin_change_password', {
+        target_user_id: Number(id),
+        new_password: next
+      }).then((res) => alert(res.message || (res.success ? '密码已重置' : '密码重置失败')));
+    };
+    window.deleteUser = (id) => {
+      if (!confirm(`确认删除用户 ${id} ?`)) return;
+      postJson('/admin_delete_user', { target_user_id: Number(id) }).then((res) => {
+        alert(res.message || (res.success ? '删除成功' : '删除失败'));
+        if (res.success) {
+          users = users.filter(u => String(u.id) !== String(id));
+          renderUserTable();
+        }
+      });
+    };
+    window.editUser = (id) => {
+      const u = users.find(x => String(x.id) === String(id));
+      document.getElementById('modalTitle').textContent = '编辑用户';
+      document.getElementById('userId').value = id;
+      document.getElementById('editUsername').value = u?.username || '';
+      document.getElementById('editPassword').value = '';
+      document.getElementById('editRole').value = (u?.role === 'admin') ? 'admin' : 'reader';
+      document.getElementById('userModal').classList.remove('hidden');
     };
 
+    document.getElementById('addUserBtn').addEventListener('click', () => {
+      document.getElementById('modalTitle').textContent = '新增用户';
+      document.getElementById('userForm').reset();
+      document.getElementById('userId').value = '';
+      document.getElementById('userModal').classList.remove('hidden');
+    });
+    document.getElementById('cancelModal').addEventListener('click', () => {
+      document.getElementById('userModal').classList.add('hidden');
+    });
+    document.getElementById('userForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('userId').value.trim();
+      const username = document.getElementById('editUsername').value.trim();
+      const password = document.getElementById('editPassword').value.trim();
+      const roleText = document.getElementById('editRole').value;
+      const role = roleText === 'admin' ? 2 : 1;
+      if (!id) {
+        const name = prompt('姓名');
+        const tel = prompt('电话');
+        const email = prompt('邮箱');
+        const res = await postJson('/admin_add_user', { username, password, role, name, tel, email });
+        alert(res.message || (res.success ? '新增成功' : '新增失败'));
+        if (res.success) {
+          const nu = res?.data?.user || {};
+          users.unshift({ id: String(nu.id || Date.now()), username: nu.username || username, role: roleText, status: 'active', lastLogin: '-' });
+          renderUserTable();
+          document.getElementById('userModal').classList.add('hidden');
+        }
+        return;
+      }
+      const resInfo = await postJson('/admin_edit_user_info', { target_user_id: Number(id), username });
+      const resRole = await postJson('/admin_set_user_role', { target_user_id: Number(id), role });
+      alert(resRole.message || resInfo.message || ((resInfo.success && resRole.success) ? '保存成功' : '保存失败'));
+      if (resInfo.success && resRole.success) {
+        const u = users.find(x => String(x.id) === String(id));
+        if (u) { u.username = username; u.role = roleText; }
+        renderUserTable();
+        document.getElementById('userModal').classList.add('hidden');
+      }
+    });
+
     // 事件监听
-    document.getElementById('bookSearchInput')?.addEventListener('input', renderBookTable);
+    document.getElementById('bookSearchInput')?.addEventListener('input', () => { renderBookTable(); });
     ['userFilter','statusFilter','dateFrom','dateTo','recordSearch'].forEach(id => {
       document.getElementById(id)?.addEventListener('change', ()=> { currentRecordPage=1; renderRecordTable(); });
       document.getElementById(id)?.addEventListener('input', ()=> { currentRecordPage=1; renderRecordTable(); });
@@ -680,6 +750,8 @@
     });
 
     // 初始化
+    renderBookTable();
+    refreshUsers();
     updateStats();
     loadUserFilter();
     renderCirculationPanel();
