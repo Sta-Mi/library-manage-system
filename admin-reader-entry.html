@@ -5,54 +5,443 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>管理员读者管理</title>
   <style>
-    *{box-sizing:border-box}body{font-family:'Inter',Arial,sans-serif;margin:0;padding:20px;background:linear-gradient(145deg,#f0f6fc 0%,#e0ecf5 100%);color:#1a3a4f}
-    .management-panel{background:#fff;border-radius:28px;padding:1.8rem;box-shadow:0 12px 24px -8px rgba(18,52,77,.08);margin-bottom:16px}
-    .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.row{display:flex;gap:10px;flex-wrap:wrap}
-    input,select,button{border-radius:30px;border:1px solid #d5e2ec;padding:10px 14px}.btn-primary{background:#1e4459;color:#fff;border:none;font-weight:600;cursor:pointer}
-    table{width:100%;border-collapse:collapse;margin-top:12px}th,td{text-align:left;padding:.9rem .8rem;border-bottom:1px solid #ecf3f9}th{color:#3b6079;border-bottom:2px solid #e2ecf3}
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: linear-gradient(145deg, #f0f6fc 0%, #e0ecf5 100%);
+      color: #1a3a4f;
+    }
+    .management-panel {
+      background: #fff;
+      border-radius: 28px;
+      padding: 1.8rem;
+      box-shadow: 0 12px 24px -8px rgba(18, 52, 77, 0.08);
+      margin-bottom: 16px;
+    }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+    .row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    input, select, button {
+      border-radius: 30px;
+      border: 1px solid #d5e2ec;
+      padding: 10px 14px;
+    }
+    .btn-primary {
+      background: #1e4459;
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-ghost {
+      background: transparent;
+      color: #1e4459;
+      border: 1px solid #d5e2ec;
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+    th, td {
+      text-align: left;
+      padding: 0.9rem 0.8rem;
+      border-bottom: 1px solid #ecf3f9;
+    }
+    th {
+      color: #3b6079;
+      border-bottom: 2px solid #e2ecf3;
+    }
+    td input {
+      width: 100%;
+      max-width: 160px;
+    }
+    .muted { color: #3b6079; font-size: 0.9rem; margin-top: 8px; }
   </style>
 </head>
 <body>
   <div class="management-panel">
-    <h2>读者登记（管理员）</h2>
+    <h2>新建读者</h2>
     <div class="grid-3" id="registerGrid">
-      <input id="rid" placeholder="读者编号（示例：R1003）"><input id="rname" placeholder="姓名"><select id="rgender"><option value="">性别</option><option>男</option><option>女</option></select>
-      <select id="rtype"><option value="">读者类型</option><option>学生</option><option>教师</option><option>社会读者</option></select><input id="remail" placeholder="邮箱"><input id="rphone" placeholder="电话">
+      <input id="username" type="text" placeholder="登录用户名" autocomplete="off" />
+      <input id="password" type="password" placeholder="密码" autocomplete="new-password" />
+      <input id="name" type="text" placeholder="用户姓名" autocomplete="off" />
+      <input id="tel" type="text" placeholder="电话" autocomplete="off" />
+      <input id="email" type="email" placeholder="邮箱" autocomplete="off" />
     </div>
-    <div class="row" style="margin-top:12px"><button id="registerBtn" class="btn-primary">登记读者</button></div>
+    <div class="row" style="margin-top: 12px">
+      <button type="button" id="registerBtn" class="btn-primary">登记读者</button>
+    </div>
   </div>
 
   <div class="management-panel">
-    <h2>读者信息查询与修改</h2>
-    <div class="row"><input id="fid" placeholder="读者编号"><input id="fname" placeholder="姓名"><select id="fgender"><option value="">性别</option><option>男</option><option>女</option></select><select id="ftype"><option value="">读者类型</option><option>学生</option><option>教师</option><option>社会读者</option></select></div>
-    <table><thead><tr><th>编号</th><th>姓名</th><th>性别</th><th>类型</th><th>邮箱</th><th>电话</th><th>修改时间</th><th>操作</th></tr></thead><tbody id="readerBody"></tbody></table>
+    <h2>读者列表</h2>
+    <div class="row" style="margin-top: 8px">
+      <input id="keyword" type="text" placeholder="搜索关键词" style="min-width: 200px" />
+      <button type="button" id="searchBtn" class="btn-primary">查询</button>
+    </div>
+    <p class="muted" id="listMeta"></p>
+    <table>
+      <thead>
+        <tr>
+          <th>读者编号</th>
+          <th>用户编号</th>
+          <th>用户名称</th>
+          <th>姓名</th>
+          <th>电话</th>
+          <th>邮箱</th>
+          <th>未还</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="readerBody"></tbody>
+    </table>
+    <div id="readerPagination" class="row" style="justify-content: center; margin-top: 12px"></div>
   </div>
 
-  <div class="management-panel">
-    <h2>读者账号注销（管理员）</h2>
-    <table><thead><tr><th>读者编号</th><th>姓名</th><th>未还图书数</th><th>操作</th></tr></thead><tbody id="cancelBody"></tbody></table>
-  </div>
+  <script>
+  (function () {
+    var API_BASE_URL = 'http://127.0.0.1:8082/api';
 
-<script>
-(function(){
-  var state={readers:[{ id:'R1001',name:'张三',gender:'男',type:'学生',email:'zhangsan@lib.com',phone:'18800000000',unreturnedCount:0,active:true,updatedAt:'2026-04-01 10:00:00'},{ id:'R1002',name:'李芳',gender:'女',type:'学生',email:'lifang@lib.com',phone:'13812345678',unreturnedCount:1,active:true,updatedAt:'2026-04-02 09:30:00'},{ id:'R1003',name:'王磊',gender:'男',type:'教师',email:'wanglei@lib.com',phone:'15987654321',unreturnedCount:0,active:true,updatedAt:'2026-04-03 14:20:00'},{ id:'R1004',name:'赵丽',gender:'女',type:'教师',email:'zhaoli@lib.com',phone:'18712345678',unreturnedCount:2,active:false,updatedAt:'2026-03-28 11:15:00'},{ id:'R1005',name:'陈晨',gender:'男',type:'学生',email:'chenchen@lib.com',phone:'13678901234',unreturnedCount:0,active:true,updatedAt:'2026-04-04 08:45:00'}],readerPasswords:{R1001:'123456',R1002:'123456'},readerKeyword:'',readerFilterForm:{id:'',name:'',gender:'',type:''},registerForm:{id:'',name:'',gender:'',type:'',email:'',phone:''}};
-  function now(){return new Date().toLocaleString('zh-CN',{hour12:false})} function notify(m){alert(m)}
-  function isValidEmail(v){return /^\S+@\S+\.\S+$/.test(v||'')} function isValidPhone(v){return /^1\d{10}$/.test(v||'')}
-  function activeReaders(){return state.readers.filter(r=>r.active!==false)}
-  function filteredReaders(){var keyword=state.readerKeyword.trim().toLowerCase(),id=(state.readerFilterForm.id||'').trim().toLowerCase(),name=(state.readerFilterForm.name||'').trim().toLowerCase(),gender=state.readerFilterForm.gender||'',type=state.readerFilterForm.type||'';return activeReaders().filter(function(r){var mk=!keyword||r.id.toLowerCase().includes(keyword)||r.name.toLowerCase().includes(keyword),mi=!id||r.id.toLowerCase().includes(id),mn=!name||r.name.toLowerCase().includes(name),mg=!gender||(r.gender||'')===gender,mt=!type||(r.type||'')===type;return mk&&mi&&mn&&mg&&mt})}
-  function submitRegister(){var f=state.registerForm;if(!f.id||!f.name||!f.phone)return notify('请至少填写编号、姓名、电话');if(state.readers.some(i=>i.id===f.id))return notify('登记失败：读者编号已存在');if(!isValidEmail(f.email)||!isValidPhone(f.phone))return notify('邮箱或手机号格式错误');state.readers.push({id:f.id,name:f.name,gender:f.gender||'未设置',type:f.type||'学生',email:f.email,phone:f.phone,unreturnedCount:0,active:true,updatedAt:now()});state.readerPasswords[f.id]='123456';state.registerForm={id:'',name:'',gender:'',type:'',email:'',phone:''};notify('读者登记成功，系统已发送激活指引');render()}
-  function saveReader(id){var r=state.readers.find(x=>x.id===id);if(!r)return;if(!r.email||!r.phone||!isValidEmail(r.email)||!isValidPhone(r.phone))return notify('邮箱和电话不能为空且格式必须正确');r.updatedAt=now();notify('读者信息已更新');render()}
-  function cancelReader(id){var r=state.readers.find(x=>x.id===id);if(!r)return;if(r.unreturnedCount>0)return notify('注销失败：该读者有未还图书');r.active=false;r.cancelledAt=new Date().toISOString().slice(0,10);notify('已逻辑注销该读者账号');render()}
-  function resetPwd(id){state.readerPasswords[id]='123456';notify('已经将密码重置为123456')}
-  function render(){['rid','rname','rgender','rtype','remail','rphone'].forEach((k,i)=>{var key=['id','name','gender','type','email','phone'][i];document.getElementById(k).value=state.registerForm[key]||''});document.getElementById('readerBody').innerHTML=filteredReaders().map(r=>`<tr><td>${r.id}</td><td>${r.name}</td><td>${r.gender||'-'}</td><td><select data-type="${r.id}"><option ${r.type==='学生'?'selected':''}>学生</option><option ${r.type==='教师'?'selected':''}>教师</option><option ${r.type==='社会读者'?'selected':''}>社会读者</option></select></td><td><input data-email="${r.id}" value="${r.email||''}"></td><td><input data-phone="${r.id}" value="${r.phone||''}"></td><td>${r.updatedAt||'-'}</td><td><button data-save="${r.id}">保存</button> <button data-rst="${r.id}">重置密码</button></td></tr>`).join('')||'<tr><td colspan="8">暂无数据</td></tr>';document.getElementById('cancelBody').innerHTML=activeReaders().map(r=>`<tr><td>${r.id}</td><td>${r.name}</td><td>${r.unreturnedCount||0}</td><td><button data-cancel="${r.id}">注销</button></td></tr>`).join('')||'<tr><td colspan="4">暂无数据</td></tr>'}
-  registerGrid.addEventListener('input',()=>{state.registerForm.id=rid.value.trim();state.registerForm.name=rname.value.trim();state.registerForm.gender=rgender.value;state.registerForm.type=rtype.value;state.registerForm.email=remail.value.trim();state.registerForm.phone=rphone.value.trim()});
-  registerBtn.onclick=submitRegister;
-  ;['fid','fname','fgender','ftype'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{state.readerFilterForm.id=fid.value.trim();state.readerFilterForm.name=fname.value.trim();state.readerFilterForm.gender=fgender.value;state.readerFilterForm.type=ftype.value;render()}));
-  readerBody.addEventListener('input',e=>{var id=e.target.dataset.type||e.target.dataset.email||e.target.dataset.phone;if(!id)return;var r=state.readers.find(x=>x.id===id);if(!r)return;if(e.target.dataset.type)r.type=e.target.value;if(e.target.dataset.email)r.email=e.target.value.trim();if(e.target.dataset.phone)r.phone=e.target.value.trim()});
-  readerBody.addEventListener('click',e=>{var s=e.target.dataset.save,rt=e.target.dataset.rst;if(s)saveReader(s);if(rt)resetPwd(rt)});
-  cancelBody.addEventListener('click',e=>{var id=e.target.dataset.cancel;if(id)cancelReader(id)});
-  render();
-})();
-</script>
+    var currentUser = null;
+    try {
+      currentUser = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+    } catch (_) {}
+    var token = sessionStorage.getItem('accessToken') || '';
+    if (!currentUser || currentUser.role !== 'admin') {
+      //window.location.href = 'login.html';
+      //return;
+    }
+
+    async function postJson(path, body) {
+      var resp = await fetch(API_BASE_URL + path, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify(body != null ? body : {})
+      });
+      var text = await resp.text();
+      try {
+        return JSON.parse(text);
+      } catch (_) {
+        return { success: false, message: text.slice(0, 120) || '非 JSON 响应' };
+      }
+    }
+
+    var state = {
+      readers: [],
+      listPage: 1,
+      listPageSize: 10,
+      listTotal: 0,
+      keyword: ''
+    };
+
+    function toast(msg) {
+      alert(msg);
+    }
+
+    function isValidEmail(v) {
+      return /^\S+@\S+\.\S+$/.test(v || '');
+    }
+
+    function extractReaderList(res) {
+      var data = (res && res.data) != null ? res.data : res;
+      var list = (data && (data.list || data.readers || data.items)) || [];
+      var total = data && data.total != null ? Number(data.total) : list.length;
+      return { list: Array.isArray(list) ? list : [], total: total };
+    }
+
+    function mapReaderRow(item) {
+      var rid = item.reader_id != null ? item.reader_id : item.id;
+      return {
+        reader_id: rid != null ? Number(rid) : null,
+        user_id: item.user_id != null ? item.user_id : '',
+        username: String(item.username || ''),
+        name: String(item.name || ''),
+        tel: String(item.tel || ''),
+        email: String(item.email || ''),
+        unreturned_count: null
+      };
+    }
+
+    async function fetchUnreturned(readerId) {
+      var res = await postJson('/admin_reader_check_unreturned', { reader_id: Number(readerId) });
+      if (!res || !res.success) return null;
+      var d = res.data || res;
+      return d.unreturned_count != null ? Number(d.unreturned_count) : 0;
+    }
+
+    async function loadReaderList() {
+      var res = await postJson('/admin_reader_list', {
+        page: state.listPage,
+        page_size: state.listPageSize,
+        keyword: state.keyword.trim() || undefined
+      });
+      if (res && res.success === false) throw new Error(res.message || '列表加载失败');
+      var pack = extractReaderList(res);
+      state.listTotal = pack.total;
+      state.readers = pack.list.map(mapReaderRow);
+      await Promise.all(
+        state.readers.map(function (r) {
+          if (r.reader_id == null) return Promise.resolve();
+          return fetchUnreturned(r.reader_id).then(function (n) {
+            r.unreturned_count = n != null ? n : '-';
+          });
+        })
+      );
+    }
+
+    function renderListMeta() {
+      var pages = Math.max(1, Math.ceil(state.listTotal / state.listPageSize) || 1);
+      document.getElementById('listMeta').textContent =
+        '共 ' + state.listTotal + ' 条 · 第 ' + state.listPage + ' / ' + pages + ' 页';
+    }
+
+    function renderPagination() {
+      var el = document.getElementById('readerPagination');
+      var totalPages = Math.max(1, Math.ceil(state.listTotal / state.listPageSize) || 1);
+      var html = '';
+      if (state.listPage > 1) html += '<button type="button" class="btn-ghost page-prev">上一页</button>';
+      html +=
+        '<button type="button" class="btn-ghost page-next"' +
+        (state.listPage >= totalPages ? ' disabled style="opacity:.5"' : '') +
+        '>下一页</button>';
+      el.innerHTML = html;
+      var prev = el.querySelector('.page-prev');
+      var next = el.querySelector('.page-next');
+      if (prev) {
+        prev.onclick = function () {
+          if (state.listPage > 1) {
+            state.listPage--;
+            loadReaderList().then(renderTable).catch(function (e) {
+              console.error(e);
+              toast(e.message || '加载失败');
+            });
+          }
+        };
+      }
+      if (next && !next.disabled) {
+        next.onclick = function () {
+          if (state.listPage < totalPages) {
+            state.listPage++;
+            loadReaderList().then(renderTable).catch(function (e) {
+              console.error(e);
+              toast(e.message || '加载失败');
+            });
+          }
+        };
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function escapeAttr(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function renderTable() {
+      renderListMeta();
+      var tbody = document.getElementById('readerBody');
+      if (!state.readers.length) {
+        tbody.innerHTML = '<tr><td colspan="8">暂无数据</td></tr>';
+        renderPagination();
+        return;
+      }
+      tbody.innerHTML = state.readers
+        .map(function (r) {
+          var rid = r.reader_id;
+          var un = r.unreturned_count != null && r.unreturned_count !== '-' ? r.unreturned_count : '-';
+          return (
+            '<tr data-rid="' +
+            escapeAttr(String(rid)) +
+            '">' +
+            '<td>' +
+            escapeHtml(String(rid)) +
+            '</td>' +
+            '<td>' +
+            escapeHtml(String(r.user_id)) +
+            '</td>' +
+            '<td>' +
+            escapeHtml(r.username) +
+            '</td>' +
+            '<td><input type="text" data-field="name" value="' +
+            escapeAttr(r.name) +
+            '"></td>' +
+            '<td><input type="text" data-field="tel" value="' +
+            escapeAttr(r.tel) +
+            '"></td>' +
+            '<td><input type="email" data-field="email" value="' +
+            escapeAttr(r.email) +
+            '"></td>' +
+            '<td>' +
+            escapeHtml(String(un)) +
+            '</td>' +
+            '<td><button type="button" class="btn-primary btn-save" style="padding:6px 12px">保存</button> ' +
+            '<button type="button" class="btn-ghost btn-del" style="padding:6px 12px">删除</button></td>' +
+            '</tr>'
+          );
+        })
+        .join('');
+      renderPagination();
+    }
+
+    async function submitRegister() {
+      var username = document.getElementById('username').value.trim();
+      var password = document.getElementById('password').value;
+      var name = document.getElementById('name').value.trim();
+      var tel = document.getElementById('tel').value.trim();
+      var email = document.getElementById('email').value.trim();
+      if (!username || !password || !name || !tel || !email) {
+        toast('请填写用户名、密码、读者姓名、电话、邮箱');
+        return;
+      }
+      if (!isValidEmail(email)) {
+        toast('邮箱格式不正确');
+        return;
+      }
+      try {
+        var res = await postJson('/admin_reader_create', { username, password, name, tel, email });
+        if (!res || !res.success) {
+          toast((res && res.message) || '登记失败');
+          return;
+        }
+        document.getElementById('username').value = '';
+        document.getElementById('password').value = '';
+        document.getElementById('name').value = '';
+        document.getElementById('tel').value = '';
+        document.getElementById('email').value = '';
+        toast('读者登记成功');
+        state.listPage = 1;
+        await loadReaderList();
+        renderTable();
+      } catch (e) {
+        console.error(e);
+        toast('网络错误');
+      }
+    }
+
+    function getRowEditValues(tr) {
+      var rid = Number(tr.getAttribute('data-rid'));
+      var name = tr.querySelector('input[data-field="name"]').value.trim();
+      var tel = tr.querySelector('input[data-field="tel"]').value.trim();
+      var email = tr.querySelector('input[data-field="email"]').value.trim();
+      return { reader_id: rid, name: name, tel: tel, email: email };
+    }
+
+    async function saveReaderRow(tr) {
+      var v = getRowEditValues(tr);
+      if (!v.reader_id) return toast('缺少读者编号');
+      if (!isValidEmail(v.email)) return toast('邮箱格式不正确');
+      try {
+        var res = await postJson('/admin_reader_update', {
+          reader_id: v.reader_id,
+          name: v.name,
+          tel: v.tel,
+          email: v.email
+        });
+        if (!res || !res.success) {
+          toast((res && res.message) || '更新失败');
+          return;
+        }
+        toast('已保存');
+        await loadReaderList();
+        renderTable();
+      } catch (e) {
+        console.error(e);
+        toast('网络错误');
+      }
+    }
+
+    async function deleteReaderRow(tr) {
+      var rid = Number(tr.getAttribute('data-rid'));
+      if (!rid) return;
+      var r = state.readers.find(function (x) { return Number(x.reader_id) === rid; });
+      var un = r && r.unreturned_count != null && r.unreturned_count !== '-' ? Number(r.unreturned_count) : 0;
+      if (un > 0) {
+        toast('该读者有未还图书，无法删除');
+        return;
+      }
+      if (!confirm('确定删除读者编号=' + rid + ' ?')) return;
+      try {
+        var res = await postJson('/admin_reader_delete', { reader_id: rid });
+        if (!res || !res.success) {
+          toast((res && res.message) || '删除失败');
+          return;
+        }
+        toast('已删除');
+        await loadReaderList();
+        renderTable();
+      } catch (e) {
+        console.error(e);
+        toast('网络错误');
+      }
+    }
+
+    document.getElementById('registerBtn').onclick = function () {
+      submitRegister().catch(function (e) {
+        console.error(e);
+        toast('请求异常');
+      });
+    };
+
+    document.getElementById('searchBtn').onclick = function () {
+      state.keyword = document.getElementById('keyword').value;
+      state.listPage = 1;
+      loadReaderList()
+        .then(renderTable)
+        .catch(function (e) {
+          console.error(e);
+          toast(e.message || '加载失败');
+        });
+    };
+
+    document.getElementById('readerBody').addEventListener('click', function (e) {
+      var tr = e.target.closest('tr[data-rid]');
+      if (!tr) return;
+      if (e.target.classList.contains('btn-save')) {
+        saveReaderRow(tr).catch(function (err) {
+          console.error(err);
+          toast('请求异常');
+        });
+      }
+      if (e.target.classList.contains('btn-del')) {
+        deleteReaderRow(tr).catch(function (err) {
+          console.error(err);
+          toast('请求异常');
+        });
+      }
+    });
+
+    (async function init() {
+      try {
+        await loadReaderList();
+        renderTable();
+      } catch (e) {
+        console.warn(e);
+        document.getElementById('readerBody').innerHTML =
+          '<tr><td colspan="8">加载失败：' + escapeHtml(e.message || String(e)) + '</td></tr>';
+      }
+    })();
+  })();
+  </script>
 </body>
 </html>
