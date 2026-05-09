@@ -70,6 +70,14 @@
 - `POST /api/reader_self_borrow_history`
 - `POST /api/reader_self_password_change`
 
+### 3.5 本次更新接口契约
+
+- `POST /api/get_book_list`：User 鉴权；请求支持 `title`、`author`、`category`、`category_id`、`exact`、`page`、`page_size`，响应 `data.books[]` 包含 `id`、`category_id`、`category_name`、`title`、`author`、`total`，同时返回 `total`、`page`、`page_size`。前端单框搜索会分别按书名、作者、分类请求后按 `id` 合并，避免把互斥条件放到同一次请求里。
+- `POST /api/borrow_book`：User 鉴权；请求 `book_id`、`due_date`，服务端自动选取 `state=0` 的在架副本，响应展示实际借出的 `barcode`。
+- `POST /api/return_book`：User 鉴权；请求 `borrow_record_id`，仅归还本人进行中或逾期记录对应副本，响应展示实际归还的 `barcode`。
+- `POST /api/admin_borrow_book`：Admin 鉴权；请求 `target_user_id`、`book_id`、`due_date`，服务端自动选取在架副本。
+- `POST /api/admin_return_book`：Admin 鉴权；请求 `borrow_record_id`，可由服务端按需校验可选 `target_user_id`。
+
 ---
 
 ## 4. 关键改造点（相对旧版）
@@ -79,7 +87,9 @@
 2. **统一 API 调用方式**
    - 页面内使用 `postJson` 统一封装 JSON POST + Bearer Token。
 3. **字段与后端契约对齐**
-   - 图书列表按 `category_name`、`total` 渲染。
+   - 图书列表按 `id`、`category_id`、`category_name`、`title`、`author`、`total` 渲染，并显式传入 `page`、`page_size`、`exact`。
+   - 读者/管理员借书统一提交 `book_id` 与未来 Unix 秒 `due_date`，由服务端自动选取在架副本。
+   - 读者/管理员还书统一提交 `borrow_record_id`，归还借阅记录对应副本。
    - 借阅状态按 `0/1/2` 映射为 借阅中/已归还/逾期。
    - 时间字段使用 Unix 秒时间戳并在前端格式化显示。
 4. **读者个人中心 API 化**

@@ -68,7 +68,7 @@
   <div id="homeView">
     <div class="page-header"><h1><i class="fas fa-search"></i> 图书综合查询</h1></div>
     <div class="search-section">
-      <input type="text" placeholder="搜索书名、作者（不支持ISBN）..." id="searchInput">
+      <input type="text" placeholder="搜索书名、作者、分类（不支持ISBN）..." id="searchInput">
       <button class="btn-primary"><i class="fas fa-search"></i> 搜索</button>
     </div>
     <table class="data-table">
@@ -82,9 +82,9 @@
     <div class="page-header"><h1><i class="fas fa-history"></i> 我的借阅</h1></div>
     <div style="background:white; border-radius:28px; padding:1.8rem;">
       <div style="display:flex; gap:12px; margin-bottom:12px;">
-        <input id="quickBorrowCode" placeholder="扫码/输入图书条码快速借阅" style="flex:1; padding:10px; border-radius:30px; border:1px solid #d5e2ec;">
+        <input id="quickBorrowCode" placeholder="输入书目ID快速借阅" style="flex:1; padding:10px; border-radius:30px; border:1px solid #d5e2ec;">
         <button class="btn-primary" id="quickBorrowBtn">快速借阅</button>
-        <input id="quickReturnCode" placeholder="扫码/输入图书条码快速归还" style="flex:1; padding:10px; border-radius:30px; border:1px solid #d5e2ec;">
+        <input id="quickReturnCode" placeholder="输入借阅记录ID快速归还" style="flex:1; padding:10px; border-radius:30px; border:1px solid #d5e2ec;">
         <button class="btn-primary" id="quickReturnBtn">快速归还</button>
       </div>
       <div style="display:flex; gap:12px; margin-bottom:20px;">
@@ -147,10 +147,29 @@
       });
     });
 
-    // 渲染图书
+    function mergeBooksById(...lists) {
+      const byId = new Map();
+      lists.flat().forEach((book) => {
+        if (book && book.id != null) byId.set(book.id, book);
+      });
+      return [...byId.values()].sort((a, b) => Number(a.id) - Number(b.id));
+    }
+
+    // 渲染图书（get_book_list 字符串条件为且关系；单框搜索分别查书名/作者/分类后按 id 合并）
     async function fetchBooks(filter='') {
-      const result = await postJson('/get_book_list', { title: filter || undefined, exact: false });
-      books = result?.data?.books || [];
+      const q = filter.trim();
+      const pageRequest = { page: 1, page_size: 100, exact: false };
+      if (!q) {
+        const result = await postJson('/get_book_list', pageRequest);
+        books = result?.data?.books || [];
+      } else {
+        const [byTitle, byAuthor, byCategory] = await Promise.all([
+          postJson('/get_book_list', { ...pageRequest, title: q }),
+          postJson('/get_book_list', { ...pageRequest, author: q }),
+          postJson('/get_book_list', { ...pageRequest, category: q })
+        ]);
+        books = mergeBooksById(byTitle?.data?.books || [], byAuthor?.data?.books || [], byCategory?.data?.books || []);
+      }
       renderBooks();
     }
     function renderBooks() {
@@ -158,9 +177,9 @@
       tbody.innerHTML = books.map(b => `
         <tr><td>${b.title}</td><td>${b.author}</td><td>${b.category_name || '-'}</td>
           <td><span class="badge returned">${b.total ?? '-'}</span></td>
-          <td>-</td>
+          <td>${Number(b.total || 0) > 0 ? `<button class="btn-primary" onclick="borrowBookById(${Number(b.id)})">借阅</button>` : '-'}</td>
         </tr>
-      `).join('');
+      `).join('') || '<tr><td colspan="5" style="text-align:center; padding:40px;">暂无图书</td></tr>';
     }
 
     // 渲染我的借阅记录（仅当前用户）
@@ -187,14 +206,20 @@
           <td>${unpaidFineMap[r.id] ? `¥${unpaidFineMap[r.id]}` : '-'}</td>
           <td>
             ${Number(r.status)!==1?`<button class="btn-primary" onclick="renewBook('${r.id}')">续借</button>`:''}
-            ${Number(r.status)!==1?`<button class="btn-primary" onclick="returnBookByBarcode('${r.barcode}')">归还</button>`:''}
+            ${Number(r.status)!==1?`<button class="btn-primary" onclick="returnBookByRecordId('${r.id}')">归还</button>`:''}
           </td>
         </tr>
       `).join('') || '<tr><td colspan="7" style="text-align:center; padding:40px;">暂无借阅记录</td></tr>';
     }
-    window.returnBookByBarcode = async (barcode) => {
-      const res = await postJson('/return_book', { barcode });
-      alert(res.message || (res.success ? '归还成功' : '归还失败'));
+    window.borrowBookById = async (bookId) => {
+      const due = String(Math.floor(Date.now() / 1000 + 14 * 24 * 3600));
+      const res = await postJson('/borrow_book', { book_id: Number(bookId), due_date: due });
+      alert(res.message || (res.success ? `借阅成功，副本条码：${res?.data?.barcode ?? '-'}` : '借阅失败'));
+      await renderMyRecords();
+    };
+    window.returnBookByRecordId = async (recordId) => {
+      const res = await postJson('/return_book', { borrow_record_id: Number(recordId) });
+      alert(res.message || (res.success ? `归还成功，副本条码：${res?.data?.barcode ?? '-'}` : '归还失败'));
       await renderMyRecords();
     };
     window.renewBook = async (recordId) => {
@@ -208,18 +233,18 @@
     document.getElementById('statusFilter')?.addEventListener('change', renderMyRecords);
     document.getElementById('recordSearch')?.addEventListener('input', renderMyRecords);
     document.getElementById('quickBorrowBtn').addEventListener('click', async ()=> {
-      const barcode = document.getElementById('quickBorrowCode').value.trim();
-      if (!barcode) return;
+      const bookId = Number(document.getElementById('quickBorrowCode').value.trim());
+      if (!bookId) return alert('请输入有效的书目ID');
       const due = String(Math.floor(Date.now() / 1000 + 14 * 24 * 3600));
-      const res = await postJson('/borrow_book', { barcode, due_date: due });
-      alert(res.message || (res.success ? '借阅成功' : '借阅失败'));
+      const res = await postJson('/borrow_book', { book_id: bookId, due_date: due });
+      alert(res.message || (res.success ? `借阅成功，副本条码：${res?.data?.barcode ?? '-'}` : '借阅失败'));
       await renderMyRecords();
     });
     document.getElementById('quickReturnBtn').addEventListener('click', async ()=> {
-      const barcode = document.getElementById('quickReturnCode').value.trim();
-      if (!barcode) return;
-      const res = await postJson('/return_book', { barcode });
-      alert(res.message || (res.success ? '归还成功' : '归还失败'));
+      const recordId = Number(document.getElementById('quickReturnCode').value.trim());
+      if (!recordId) return alert('请输入有效的借阅记录ID');
+      const res = await postJson('/return_book', { borrow_record_id: recordId });
+      alert(res.message || (res.success ? `归还成功，副本条码：${res?.data?.barcode ?? '-'}` : '归还失败'));
       await renderMyRecords();
     });
 

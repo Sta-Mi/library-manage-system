@@ -263,11 +263,11 @@
     <div class="book-search-section">
       <div class="search-box" style="width:100%;">
         <i class="fas fa-search"></i>
-        <input type="text" id="bookSearchInput" placeholder="搜索书名或作者（模糊，ISBN 请用书目检索）" style="width:100%;">
+        <input type="text" id="bookSearchInput" placeholder="搜索书名、作者或分类（模糊，ISBN 请用书目检索）" style="width:100%;">
       </div>
       <table class="data-table" style="margin-top:20px;">
         <thead>
-          <tr><th>书名</th><th>作者</th><th>ISBN</th><th>状态</th><th>位置</th></tr>
+          <tr><th>书名</th><th>作者</th><th>书目ID</th><th>可借数量</th><th>分类</th></tr>
         </thead>
         <tbody id="bookTableBody"></tbody>
       </table>
@@ -303,7 +303,7 @@
       <h3 style="margin-bottom:12px;">借阅办理</h3>
       <div class="action-bar">
         <input id="borrowUserId" class="search-box" style="padding:10px;" placeholder="读者证号/用户ID">
-        <input id="borrowBookId" class="search-box" style="padding:10px;" placeholder="图书条码/ISBN/图书ID">
+        <input id="borrowBookId" class="search-box" style="padding:10px;" placeholder="书目ID（book_id）">
         <button class="btn-primary" id="borrowConfirmBtn">一键借阅确认</button>
       </div>
       <div id="borrowUserInfo" style="color:#3b6079;"></div>
@@ -311,8 +311,8 @@
     <div class="management-panel">
       <h3 style="margin-bottom:12px;">归还办理</h3>
       <div class="action-bar">
-        <input id="returnBookId" class="search-box" style="padding:10px;" placeholder="图书条码/ISBN/图书ID">
-        <button class="btn-primary" id="returnLookupBtn">识别借阅信息</button>
+        <input id="returnBookId" class="search-box" style="padding:10px;" placeholder="借阅记录ID（borrow_record_id）">
+        <button class="btn-primary" id="returnLookupBtn">识别借阅记录</button>
         <button class="btn-primary" id="returnConfirmBtn">确认归还</button>
       </div>
       <div id="returnInfo" style="color:#3b6079;"></div>
@@ -507,7 +507,15 @@
       return overdueDays;
     }
 
-    // 渲染图书表格（get_book_list：title/author 等为且关系；单框「书名或作者」需分别请求后按 id 合并）
+    function mergeBooksById(...lists) {
+      const byId = new Map();
+      lists.flat().forEach((book) => {
+        if (book && book.id != null) byId.set(book.id, book);
+      });
+      return [...byId.values()].sort((a, b) => Number(a.id) - Number(b.id));
+    }
+
+    // 渲染图书表格（get_book_list：title/author/category 等为且关系；单框搜索分别请求后按 id 合并）
     async function renderBookTable() {
       const raw = document.getElementById('bookSearchInput')?.value || '';
       const q = raw.trim();
@@ -515,23 +523,18 @@
       if (!tbody) return;
 
       let list = [];
+      const pageRequest = { page: 1, page_size: 100, exact: false };
       try {
         if (!q) {
-          const result = await postJson('/get_book_list', {});
+          const result = await postJson('/get_book_list', pageRequest);
           list = result?.data?.books || [];
         } else {
-          const [rTitle, rAuthor] = await Promise.all([
-            postJson('/get_book_list', { title: q, exact: false }),
-            postJson('/get_book_list', { author: q, exact: false })
+          const [rTitle, rAuthor, rCategory] = await Promise.all([
+            postJson('/get_book_list', { ...pageRequest, title: q }),
+            postJson('/get_book_list', { ...pageRequest, author: q }),
+            postJson('/get_book_list', { ...pageRequest, category: q })
           ]);
-          const byId = new Map();
-          (rTitle?.data?.books || []).forEach((b) => {
-            if (b && b.id != null) byId.set(b.id, b);
-          });
-          (rAuthor?.data?.books || []).forEach((b) => {
-            if (b && b.id != null) byId.set(b.id, b);
-          });
-          list = [...byId.values()];
+          list = mergeBooksById(rTitle?.data?.books || [], rAuthor?.data?.books || [], rCategory?.data?.books || []);
         }
       } catch (e) {
         console.error(e);
@@ -541,11 +544,11 @@
       books = list;
       tbody.innerHTML = list.map(b => `
         <tr>
-          <td>${b.title}</td><td>${b.author}</td><td>-</td>
+          <td>${b.title}</td><td>${b.author}</td><td>${b.id ?? '-'}</td>
           <td><span class="badge returned">可借数量：${b.total ?? 0}</span></td>
           <td>${b.category_name || '-'}</td>
         </tr>
-      `).join('');
+      `).join('') || '<tr><td colspan="5" style="text-align:center; padding:40px;">暂无图书</td></tr>';
     }
 
     // 渲染借阅记录（管理员视图：可筛选用户）
@@ -607,10 +610,10 @@
     }
 
     window.markReturned = async (id) => {
-      const record = records.find(r=>r.id===id);
+      const record = records.find(r=>String(r.id)===String(id));
       if (!record) return;
-      const res = await postJson('/admin_return_book', { barcode: record.barcode });
-      alert(res.message || (res.success ? '归还成功' : '归还失败'));
+      const res = await postJson('/admin_return_book', { borrow_record_id: Number(id) });
+      alert(res.message || (res.success ? `归还成功，副本条码：${res?.data?.barcode ?? '-'}` : '归还失败'));
       await renderRecordTable();
       updateStats();
     };
@@ -643,20 +646,21 @@
 
     document.getElementById('borrowConfirmBtn').addEventListener('click', async () => {
       const uid = document.getElementById('borrowUserId').value.trim();
-      const barcode = document.getElementById('borrowBookId').value.trim();
+      const bookId = Number(document.getElementById('borrowBookId').value.trim());
+      if (!Number(uid) || !bookId) return alert('请输入有效的用户ID和书目ID');
       const due = String(Math.floor(Date.now() / 1000 + 14 * 24 * 3600));
-      const res = await postJson('/admin_borrow_book', { target_user_id: Number(uid), barcode, due_date: due });
-      alert(res.message || (res.success ? '借阅办理成功' : '借阅办理失败'));
+      const res = await postJson('/admin_borrow_book', { target_user_id: Number(uid), book_id: bookId, due_date: due });
+      alert(res.message || (res.success ? `借阅办理成功，副本条码：${res?.data?.barcode ?? '-'}` : '借阅办理失败'));
       await renderRecordTable();
       updateStats();
     });
 
     document.getElementById('returnLookupBtn').addEventListener('click', () => {
-      const bid = document.getElementById('returnBookId').value.trim();
-      const record = records.find(r => r.barcode === bid && r.status !== 'returned');
+      const recordId = document.getElementById('returnBookId').value.trim();
+      const record = records.find(r => String(r.id) === recordId && r.status !== 'returned');
       pendingReturnRecordId = record?.id || null;
-      if (!record) return document.getElementById('returnInfo').textContent = '未找到在借记录';
-      document.getElementById('returnInfo').innerHTML = `借阅人：${record.userName}，借阅日期：${record.borrowDate}，应还日期：${record.dueDate}，是否逾期：${new Date(record.dueDate)<new Date()?'是':'否'}，逾期罚款：¥${getFine(record)}`;
+      if (!record) return document.getElementById('returnInfo').textContent = '未找到进行中或逾期的借阅记录';
+      document.getElementById('returnInfo').innerHTML = `借阅记录：#${record.id}，借阅人：${record.userName}，图书：${record.bookTitle}，借阅日期：${record.borrowDate}，应还日期：${record.dueDate}，是否逾期：${new Date(record.dueDate)<new Date()?'是':'否'}，逾期罚款：¥${getFine(record)}`;
     });
     document.getElementById('returnConfirmBtn').addEventListener('click', () => {
       if (!pendingReturnRecordId) return alert('请先识别借阅信息');
