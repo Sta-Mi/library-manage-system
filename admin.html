@@ -263,7 +263,7 @@
     <div class="book-search-section">
       <div class="search-box" style="width:100%;">
         <i class="fas fa-search"></i>
-        <input type="text" id="bookSearchInput" placeholder="搜索书名、作者或ISBN..." style="width:100%;">
+        <input type="text" id="bookSearchInput" placeholder="搜索书名或作者（模糊，ISBN 请用书目检索）" style="width:100%;">
       </div>
       <table class="data-table" style="margin-top:20px;">
         <thead>
@@ -507,17 +507,39 @@
       return overdueDays;
     }
 
-    // 渲染图书表格
+    // 渲染图书表格（get_book_list：title/author 等为且关系；单框「书名或作者」需分别请求后按 id 合并）
     async function renderBookTable() {
-      const search = document.getElementById('bookSearchInput')?.value.toLowerCase() || '';
-      const result = await postJson('/get_book_list', { title: search || undefined, exact: false });
-      books = result?.data?.books || [];
-      const filtered = books.filter(b =>
-        b.title.toLowerCase().includes(search) || 
-        b.author.toLowerCase().includes(search)
-      );
+      const raw = document.getElementById('bookSearchInput')?.value || '';
+      const q = raw.trim();
       const tbody = document.getElementById('bookTableBody');
-      tbody.innerHTML = filtered.map(b => `
+      if (!tbody) return;
+
+      let list = [];
+      try {
+        if (!q) {
+          const result = await postJson('/get_book_list', {});
+          list = result?.data?.books || [];
+        } else {
+          const [rTitle, rAuthor] = await Promise.all([
+            postJson('/get_book_list', { title: q, exact: false }),
+            postJson('/get_book_list', { author: q, exact: false })
+          ]);
+          const byId = new Map();
+          (rTitle?.data?.books || []).forEach((b) => {
+            if (b && b.id != null) byId.set(b.id, b);
+          });
+          (rAuthor?.data?.books || []).forEach((b) => {
+            if (b && b.id != null) byId.set(b.id, b);
+          });
+          list = [...byId.values()];
+        }
+      } catch (e) {
+        console.error(e);
+        list = [];
+      }
+
+      books = list;
+      tbody.innerHTML = list.map(b => `
         <tr>
           <td>${b.title}</td><td>${b.author}</td><td>-</td>
           <td><span class="badge returned">可借数量：${b.total ?? 0}</span></td>
