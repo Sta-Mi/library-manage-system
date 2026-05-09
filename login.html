@@ -423,28 +423,7 @@
 
     forgotLink.addEventListener('click', (e)=> {
       e.preventDefault();
-      const mode = prompt('请输入操作：1=找回密码（邮箱验证码），2=修改密码（旧密码）');
-      if (mode === '1') {
-        const username = prompt('请输入用户名');
-        const verify_code = prompt('请输入邮箱验证码');
-        const new_password = prompt('请输入新密码');
-        if (!username || !verify_code || !new_password) return;
-        postJson('/findback_account', { username, verify_code, new_password }).then((result) => {
-          alert(result.message || (result.success ? '密码找回成功' : '密码找回失败'));
-        });
-        return;
-      }
-      if (mode === '2') {
-        const username = prompt('请输入用户名');
-        const old_password = prompt('请输入旧密码');
-        const new_password = prompt('请输入新密码');
-        if (!username || !old_password || !new_password) return;
-        postJson('/change_password', { username, old_password, new_password }).then((result) => {
-          alert(result.message || (result.success ? '密码修改成功' : '密码修改失败'));
-        });
-        return;
-      }
-      alert('已取消操作');
+      alert('请联系管理员重置密码。测试账号：reader/123456 ； admin/admin123');
     });
   })();
 </script>
