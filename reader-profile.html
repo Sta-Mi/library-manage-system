@@ -8,11 +8,14 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; } body { font-family:'Inter',sans-serif; background:#f5faff; display:flex; min-height:100vh; }
+    * { margin:0; padding:0; box-sizing:border-box; } 
+    body { font-family:'Inter',sans-serif; background:#f5faff; display:flex; min-height:100vh; }
     .sidebar { width:260px; background:#fff; padding:2rem 1rem; box-shadow:4px 0 12px rgba(0,0,0,.02); }
     .nav-item { padding:14px 18px; margin:6px 0; border-radius:16px; display:flex; gap:14px; text-decoration:none; color:inherit; }
     .nav-item.active { background:#1e4459; color:#fff; } .main-content { flex:1; padding:2rem 2.5rem; }
-    .input-field { width:100%; padding:14px; border-radius:30px; border:1px solid #d5e2ec; margin:8px 0; } .btn-primary { background:#1e4459; color:#fff; border:none; padding:12px 24px; border-radius:36px; cursor:pointer; }
+    .input-field { width:100%; padding:14px; border-radius:30px; border:1px solid #d5e2ec; margin:8px 0; } 
+    .btn-primary { background:#1e4459; color:#fff; border:none; padding:12px 24px; border-radius:36px; cursor:pointer; }
+    .muted { color:#3b6079; font-size:0.85rem; margin-top:6px; line-height:1.5; }
   </style>
 </head>
 <body>
@@ -26,9 +29,14 @@
     <h2>个人中心（读者）</h2>
     <div style="max-width:760px; margin-top:30px; background:white; border-radius:32px; padding:2rem;">
       <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;">
-        <input id="profileId" class="input-field" placeholder="读者编号" disabled><input id="profileName" class="input-field" placeholder="姓名">
-        <input id="profileGender" class="input-field" placeholder="性别" disabled><input id="profileType" class="input-field" placeholder="读者类型" disabled>
-        <input id="profileEmail" class="input-field" placeholder="邮箱"><input id="profilePhone" class="input-field" placeholder="电话">
+        <input id="profileId" class="input-field" placeholder="读者编号" disabled>
+        <input id="profileUserId" class="input-field" placeholder="user_id" disabled title="user_id">
+        <input id="profileUsername" class="input-field" placeholder="登录用户名" disabled title="username">
+        <input id="profileName" class="input-field" placeholder="姓名">
+        <input id="profileGender" class="input-field" placeholder="性别" disabled>
+        <input id="profileType" class="input-field" placeholder="读者类型" disabled>
+        <input id="profileEmail" class="input-field" placeholder="邮箱">
+        <input id="profilePhone" class="input-field" placeholder="电话">
       </div>
       <input id="profileAvatarUpload" type="file" accept="image/*" class="input-field">
       <p>最近修改时间：<span id="profileUpdatedAt">-</span></p>
@@ -42,36 +50,73 @@
 <script>
 (function () {
   const API_BASE_URL = 'http://127.0.0.1:8082/api';
-  const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+  let currentUser = null;
+  try {
+    currentUser = JSON.parse(sessionStorage.getItem('currentUser') || 'null');
+  } catch (_) { currentUser = null; }
   const token = sessionStorage.getItem('accessToken') || '';
-  if (!currentUser || currentUser.role !== 'reader') window.location.href='login.html';
+  if (!currentUser || currentUser.role !== 'reader') {
+    window.location.href = 'login.html';
+    return;
+  }
+
   async function postJson(path, body) {
     const resp = await fetch(`${API_BASE_URL}${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify(body || {})
     });
-    return resp.json();
+    const text = await resp.text();
+    try { return JSON.parse(text); } catch (_) { return { success: false, message: text.slice(0, 120) || '非 JSON 响应' }; }
   }
+
+  function getReaderIdFromSession() {
+    const ri = currentUser && currentUser.reader_info;
+    if (!ri) return null;
+    const v = ri.reader_id != null ? ri.reader_id : ri.id;
+    if (v == null || v === '') return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+
   async function renderProfile() {
-    const res = await postJson('/reader_self_info_get', {});
-    const info = res?.data || {};
-    document.getElementById('profileId').value = info.reader_id || '-';
+    let res = await postJson('/reader_self_info_get', {});
+    let info = (res && res.data) || {};
+    const rid = getReaderIdFromSession();
+    if ((!res || !res.success) && rid != null) {
+      const adminTry = await postJson('/admin_reader_get', { reader_id: rid });
+      if (adminTry && adminTry.success && adminTry.data) {
+        res = adminTry;
+        info = adminTry.data;
+      }
+    }
+    if (!res || !res.success) {
+      alert((res && res.message) || '资料加载失败');
+      return;
+    }
+    document.getElementById('profileId').value = info.reader_id != null ? String(info.reader_id) : (info.id != null ? String(info.id) : '-');
+    document.getElementById('profileUserId').value = info.user_id != null ? String(info.user_id) : '';
+    document.getElementById('profileUsername').value = info.username != null ? String(info.username) : (currentUser.username || '');
     document.getElementById('profileName').value = info.name || '';
-    document.getElementById('profileGender').value = '未设置';
-    document.getElementById('profileType').value = '普通读者';
+    document.getElementById('profileGender').value = (info.gender != null && info.gender !== '') ? String(info.gender) : '未设置';
+    document.getElementById('profileType').value = (info.reader_type != null && info.reader_type !== '') ? String(info.reader_type) : ((info.type != null && info.type !== '') ? String(info.type) : '普通读者');
     document.getElementById('profileEmail').value = info.email || '';
     document.getElementById('profilePhone').value = info.tel || '';
+    if ((document.getElementById('profileId').value === '-' || document.getElementById('profileId').value === '') && rid != null) {
+      document.getElementById('profileId').value = String(rid);
+    }
     document.getElementById('profileUpdatedAt').textContent = new Date().toLocaleString('zh-CN', { hour12: false });
   }
   document.getElementById('profileAvatarUpload').addEventListener('change',()=>{ alert('当前后端接口未提供头像上传，暂不支持。'); });
   document.getElementById('saveProfileBtn').addEventListener('click',async ()=>{
-    const payload = {
-      name: document.getElementById('profileName').value.trim(),
-      tel: document.getElementById('profilePhone').value.trim(),
-      email: document.getElementById('profileEmail').value.trim()
-    };
-    const res = await postJson('/reader_self_info_update', payload);
+    const name = document.getElementById('profileName').value.trim();
+    const tel = document.getElementById('profilePhone').value.trim();
+    const email = document.getElementById('profileEmail').value.trim();
+    const reader_id = getReaderIdFromSession();
+    let res = await postJson('/reader_self_info_update', { name, tel, email });
+    if ((!res || !res.success) && reader_id != null) {
+      res = await postJson('/admin_reader_update', { reader_id, name, tel, email });
+    }
     alert(res.message || (res.success ? '个人资料已保存' : '保存失败'));
     if (res.success) renderProfile();
   });
@@ -83,12 +128,22 @@
     alert(res.message || (res.success ? '密码修改成功' : '密码修改失败'));
   });
   document.getElementById('loadHistoryBtn').addEventListener('click', async ()=> {
-    const start_date = prompt('开始日期(可空，格式 YYYY-MM-DD)') || undefined;
-    const end_date = prompt('结束日期(可空，格式 YYYY-MM-DD)') || undefined;
-    const res = await postJson('/reader_self_borrow_history', { start_date, end_date });
-    document.getElementById('historyBox').textContent = JSON.stringify(res?.data?.list || [], null, 2);
+    const start_date = document.getElementById('histStart').value || undefined;
+    const end_date = document.getElementById('histEnd').value || undefined;
+    let page_size = parseInt(document.getElementById('histPageSize').value, 10);
+    if (!Number.isFinite(page_size) || page_size < 1) page_size = 20;
+    const reader_id = getReaderIdFromSession();
+    let res = await postJson('/reader_self_borrow_history', { start_date, end_date, page: 1, page_size });
+    if ((!res || !res.success) && reader_id != null) {
+      res = await postJson('/admin_reader_borrow_history', { reader_id, start_date, end_date, page: 1, page_size });
+    }
+    const data = (res && res.data) || {};
+    const list = data.list || [];
+    document.getElementById('historyBox').textContent = JSON.stringify({ success: !!(res && res.success), total: data.total, page: data.page, page_size: data.page_size, list }, null, 2);
   });
-  document.getElementById('logoutBtn').addEventListener('click',()=>{ sessionStorage.removeItem('currentUser'); window.location.href='login.html'; });
+  document.getElementById('logoutBtn').addEventListener('click',()=>{ sessionStorage.removeItem('currentUser'); 
+  window.location.href='login.html'; 
+  });
   renderProfile();
 })();
 </script>
