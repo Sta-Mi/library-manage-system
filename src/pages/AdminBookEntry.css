@@ -1,0 +1,46 @@
+.admin-book-entry {
+  font-family: 'Inter', Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background: linear-gradient(145deg, #f0f6fc 0%, #e0ecf5 100%);
+  color: #1a3a4f;
+  min-height: 100%;
+  box-sizing: border-box;
+}
+.admin-book-entry * {
+  box-sizing: border-box;
+}
+.admin-book-entry .management-panel {
+  background: #fff;
+  border-radius: 28px;
+  padding: 1.8rem;
+  box-shadow: 0 12px 24px -8px rgba(18, 52, 77, 0.08);
+  margin-bottom: 16px;
+}
+.admin-book-entry .grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.admin-book-entry .search-box,
+.admin-book-entry input,
+.admin-book-entry select,
+.admin-book-entry button {
+  border-radius: 30px;
+  border: 1px solid #d5e2ec;
+  padding: 10px 14px;
+  font: inherit;
+}
+.admin-book-entry .btn-primary {
+  background: #1e4459;
+  color: #fff;
+  border: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+.admin-book-entry .action-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}

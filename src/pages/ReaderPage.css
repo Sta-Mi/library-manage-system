@@ -1,0 +1,161 @@
+.reader-page {
+  font-family: 'Inter', sans-serif;
+  background: #f5faff;
+  min-height: 100vh;
+  display: flex;
+}
+.reader-page .sidebar {
+  width: 260px;
+  background: white;
+  padding: 2rem 1rem;
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.02);
+}
+.reader-page .logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 0.8rem 2rem;
+}
+.reader-page .logo i {
+  background: #1e4459;
+  color: white;
+  padding: 12px;
+  border-radius: 16px;
+}
+.reader-page .nav-item {
+  padding: 14px 18px;
+  margin: 6px 0;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  text-decoration: none;
+}
+.reader-page .nav-item.active {
+  background: #1e4459;
+  color: white;
+}
+.reader-page .main-content {
+  flex: 1;
+  padding: 2rem 2.5rem;
+}
+.reader-page .page-header {
+  margin-bottom: 2rem;
+}
+.reader-page .search-section {
+  background: white;
+  border-radius: 48px;
+  padding: 6px 6px 6px 24px;
+  display: flex;
+  border: 1px solid #d5e2ec;
+  margin-bottom: 24px;
+}
+.reader-page .search-section input {
+  flex: 1;
+  border: none;
+  padding: 14px;
+  outline: none;
+}
+.reader-page .data-table {
+  width: 100%;
+  background: white;
+  border-radius: 24px;
+  padding: 1rem;
+}
+.reader-page .data-table th {
+  text-align: left;
+  padding: 1rem;
+  color: #3b6079;
+}
+.reader-page .data-table td {
+  padding: 1rem;
+  border-top: 1px solid #ecf3f9;
+}
+.reader-page .badge {
+  padding: 4px 12px;
+  border-radius: 30px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.reader-page .badge.borrowed {
+  background: #fce9e6;
+  color: #b13e3e;
+}
+.reader-page .badge.returned {
+  background: #e3f0e8;
+  color: #1b6b4c;
+}
+.reader-page .badge.overdue {
+  background: #fff3cd;
+  color: #856404;
+}
+.reader-page .modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.reader-page .modal-card {
+  background: white;
+  border-radius: 36px;
+  padding: 2rem;
+  width: 380px;
+}
+.reader-page .hidden {
+  display: none !important;
+}
+.reader-page .input-field {
+  width: 100%;
+  padding: 14px;
+  border-radius: 30px;
+  border: 1px solid #d5e2ec;
+  margin: 16px 0;
+}
+.reader-page .btn-primary {
+  background: #1e4459;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 36px;
+  cursor: pointer;
+  font: inherit;
+}
+.reader-page .records-toolbar {
+  background: white;
+  border-radius: 28px;
+  padding: 1.8rem;
+}
+.reader-page .records-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.reader-page .records-row input,
+.reader-page .records-row select {
+  flex: 1;
+  min-width: 120px;
+  padding: 10px;
+  border-radius: 30px;
+  border: 1px solid #d5e2ec;
+  font: inherit;
+}
+.reader-page .records-filter-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}

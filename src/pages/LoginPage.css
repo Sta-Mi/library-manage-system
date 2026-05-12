@@ -1,0 +1,208 @@
+.login-page {
+  font-family: 'Inter', sans-serif;
+  background: linear-gradient(145deg, #f0f6fc 0%, #dae8f2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  color: #1a3a4f;
+}
+.auth-card {
+  max-width: 520px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 40px;
+  box-shadow: 0 25px 45px -12px rgba(18, 52, 77, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  padding: 2.5rem 2.25rem;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 2rem;
+}
+.brand-icon {
+  background: #1e4459;
+  color: white;
+  width: 50px;
+  height: 50px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  box-shadow: 0 10px 16px -6px rgba(30, 68, 89, 0.25);
+}
+.brand-text {
+  font-weight: 700;
+  font-size: 1.9rem;
+  letter-spacing: -0.02em;
+  color: #143e53;
+}
+.brand-text span {
+  font-weight: 400;
+  font-size: 0.95rem;
+  color: #4f7a95;
+  margin-left: 6px;
+}
+.role-tabs {
+  display: flex;
+  background: rgba(220, 235, 248, 0.5);
+  padding: 6px;
+  border-radius: 48px;
+  margin-bottom: 2.2rem;
+  border: 1px solid rgba(120, 160, 190, 0.15);
+}
+.role-tab {
+  flex: 1;
+  text-align: center;
+  padding: 12px 10px;
+  border-radius: 40px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #2d556b;
+  transition: all 0.2s;
+  background: transparent;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+}
+.role-tab.active {
+  background: white;
+  color: #1a4459;
+  box-shadow: 0 6px 14px rgba(20, 62, 85, 0.08);
+}
+.input-group {
+  margin-bottom: 1.6rem;
+}
+.input-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  color: #1e4459;
+}
+.input-field {
+  width: 100%;
+  padding: 14px 18px;
+  font-size: 1rem;
+  border: 1.8px solid #d5e2ec;
+  border-radius: 30px;
+  background: #fbfdff;
+  outline: none;
+  font-family: 'Inter', sans-serif;
+}
+.input-field:focus {
+  border-color: #2f7899;
+  box-shadow: 0 0 0 4px rgba(47, 120, 153, 0.12);
+}
+.captcha-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.captcha-input {
+  flex: 2;
+}
+.captcha-display {
+  flex: 1;
+  background: #e5eef6;
+  border-radius: 30px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.6rem;
+  letter-spacing: 6px;
+  color: #1e4b66;
+  border: 1.8px solid #d5e2ec;
+  user-select: none;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-family: inherit;
+}
+.captcha-display:hover {
+  background: #d3e2f0;
+}
+.captcha-display.small-text {
+  font-size: 0.95rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.form-extra {
+  display: flex;
+  justify-content: flex-end;
+  margin: 8px 0 22px;
+}
+.forgot-link {
+  color: #2d6e8f;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 0.9rem;
+  border-bottom: 1.5px dashed #aac3d4;
+}
+.btn-login {
+  width: 100%;
+  padding: 16px 20px;
+  background: #1e4459;
+  color: white;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 48px;
+  cursor: pointer;
+  box-shadow: 0 12px 20px -8px rgba(30, 68, 89, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
+}
+.register-hint {
+  margin-top: 28px;
+  text-align: center;
+  color: #3f6d89;
+}
+.register-link {
+  background: none;
+  border: none;
+  color: #1e5b7c;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: 8px;
+  border-bottom: 1.5px solid #b1cfe5;
+  font-family: inherit;
+}
+.message-area {
+  min-height: 28px;
+  margin-top: 18px;
+  color: #c74545;
+  font-size: 0.9rem;
+  text-align: center;
+}
+.hidden {
+  display: none !important;
+}
+.register-sub {
+  margin-bottom: 1.8rem;
+  color: #2d5e78;
+}
+.brand-tight {
+  margin-bottom: 1.2rem;
+}
+.btn-login-mt {
+  margin-top: 12px;
+}
+.register-hint-tight {
+  margin-top: 22px;
+}

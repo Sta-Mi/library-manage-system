@@ -1,0 +1,70 @@
+.book-list-pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: #f4f8fb;
+  border-radius: 12px;
+  border: 1px solid #d5e2ec;
+  font-size: 0.9rem;
+  color: #3b6079;
+}
+
+.book-list-pager__meta {
+  flex: 1 1 auto;
+  min-width: 200px;
+}
+
+.book-list-pager__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.book-list-pager__btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid #c5d6e2;
+  background: #fff;
+  color: #2d4a5e;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.book-list-pager__btn:hover:not(:disabled) {
+  background: #e8f2f8;
+}
+
+.book-list-pager__btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.book-list-pager__btn--primary {
+  border-color: #4a90b8;
+  background: #4a90b8;
+  color: #fff;
+}
+
+.book-list-pager__btn--primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.book-list-pager__jump {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 4px;
+}
+
+.book-list-pager__jump input {
+  width: 52px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #c5d6e2;
+  text-align: center;
+}

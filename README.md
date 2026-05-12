@@ -1,15 +1,15 @@
-# Library Manage System（前端静态页）
+# Library Manage System（React 前端）
 
-本仓库是一个基于原生 HTML/CSS/JavaScript 的图书管理前端页面集合，已从本地 `localStorage` 模拟逻辑迁移为**后端 API 驱动**（POST + JSON + JWT）。
+本仓库为 **Vite + React** 图书管理前端，通过**后端 API**交互（POST + JSON + JWT），`sessionStorage` 保存 `accessToken` 与 `currentUser`。
 
 ---
 
-## 1. 页面说明
+## 1. 路由说明
 
-- `login.html`：登录/注册页（保存 `accessToken`、`currentUser` 到 `sessionStorage`）。  
-- `reader.html`：读者图书查询、借阅记录、借还书、续借、罚款展示。  
-- `reader-profile.html`：读者个人资料、自助改资料/改密码/借阅历史。  
-- `admin.html`：管理员图书查询、借阅流通、借阅记录、用户管理（新增/编辑/禁用/删用户/重置密码/改角色）。  
+- `/login`：登录/注册。  
+- `/reader`：读者图书查询、借阅记录、借还书、续借、罚款展示。  
+- `/reader/profile`：读者个人资料、改资料/改密码/借阅历史。  
+- `/admin`：管理员图书查询、流通、借阅记录、用户与罚款等（图书录入、读者管理为内嵌组件，不再使用 iframe）。  
 
 ---
 
@@ -70,14 +70,6 @@
 - `POST /api/reader_self_borrow_history`
 - `POST /api/reader_self_password_change`
 
-### 3.5 本次更新接口契约
-
-- `POST /api/get_book_list`：User 鉴权；请求支持 `title`、`author`、`category`、`category_id`、`exact`、`page`、`page_size`，响应 `data.books[]` 包含 `id`、`category_id`、`category_name`、`title`、`author`、`total`，同时返回 `total`、`page`、`page_size`。前端单框搜索会分别按书名、作者、分类请求后按 `id` 合并，避免把互斥条件放到同一次请求里。
-- `POST /api/borrow_book`：User 鉴权；请求 `book_id`、`due_date`，服务端自动选取 `state=0` 的在架副本，响应展示实际借出的 `barcode`。
-- `POST /api/return_book`：User 鉴权；请求 `borrow_record_id`，仅归还本人进行中或逾期记录对应副本，响应展示实际归还的 `barcode`。
-- `POST /api/admin_borrow_book`：Admin 鉴权；请求 `target_user_id`、`book_id`、`due_date`，服务端自动选取在架副本。
-- `POST /api/admin_return_book`：Admin 鉴权；请求 `borrow_record_id`，可由服务端按需校验可选 `target_user_id`。
-
 ---
 
 ## 4. 关键改造点（相对旧版）
@@ -87,9 +79,7 @@
 2. **统一 API 调用方式**
    - 页面内使用 `postJson` 统一封装 JSON POST + Bearer Token。
 3. **字段与后端契约对齐**
-   - 图书列表按 `id`、`category_id`、`category_name`、`title`、`author`、`total` 渲染，并显式传入 `page`、`page_size`、`exact`。
-   - 读者/管理员借书统一提交 `book_id` 与未来 Unix 秒 `due_date`，由服务端自动选取在架副本。
-   - 读者/管理员还书统一提交 `borrow_record_id`，归还借阅记录对应副本。
+   - 图书列表按 `category_name`、`total` 渲染。
    - 借阅状态按 `0/1/2` 映射为 借阅中/已归还/逾期。
    - 时间字段使用 Unix 秒时间戳并在前端格式化显示。
 4. **读者个人中心 API 化**
@@ -101,15 +91,14 @@
 
 ## 5. 本地运行
 
-这是静态页面项目，可直接用任意静态服务器启动，例如：
-
 ```bash
-python -m http.server 5500
+npm install
+npm run dev
 ```
 
-然后访问：
+浏览器访问开发服务器提示的地址（一般为 `http://127.0.0.1:5173`），默认进入 `/login`。
 
-- `http://127.0.0.1:5500/login.html`
+生产构建：`npm run build`，静态资源输出到 `dist/`，可用任意静态服务器托管并将入口指向 `dist/index.html`。
 
 > 注意：需确保后端服务 `http://127.0.0.1:8082` 正常启动并允许当前前端来源（CORS）。
 
@@ -118,4 +107,4 @@ python -m http.server 5500
 ## 6. 当前限制与说明
 
 - 当前提供的接口文档中未包含“管理员用户列表查询”接口；因此用户表格的“列表来源”能力仍受接口可用性约束，新增/编辑/状态变更/删除等动作已接入后端接口。  
-- `reader-profile.html` 中头像上传后端暂无对应接口，前端保留提示，不执行上传。  
+- 读者个人中心头像上传后端暂无对应接口，前端保留提示，不执行上传。  
